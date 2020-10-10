@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>Electremote</title>
+  <link rel="stylesheet" href="index.css">
+  <script type="text/javascript" src="./res/qrcode.min.js"></script>
+</head>
+
+<body>
+  <div class="main">
+    <img src="./res/remote.gif" alt="">
+    <h1 id="status">Electremote is running on:</h1>
+    <h2 id="address">address</h2>
+    <hr>
+    <p>scan barcode for remote control</p>
+    <div id="qr">
+    </div>
+  </div>
+  <script>
+    const {
+      ipcRenderer
+    } = require('electron');
+
+    ipcRenderer.on('ip', (event, arg) => {
+      document.getElementById("address").innerHTML = arg;
+      const qrcode = new QRCode(document.getElementById("qr"), {
+        width: 100,
+        height: 100
+      });
+      qrcode.makeCode(arg);
+    })
+  </script>
+</body>
+
+</html>
