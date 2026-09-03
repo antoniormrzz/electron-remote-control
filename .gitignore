@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Build output
+.vite/
+dist/
+out/
+apps/desktop/resources/remote/
+
+# Tool caches and reports
+*.tsbuildinfo
+.eslintcache
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/

@@ -1,0 +1,6 @@
+electremote/
+pwa-remote-control/
+**/dist/
+**/node_modules/
+**/out/
+pnpm-lock.yaml

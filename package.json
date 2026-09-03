@@ -1,0 +1,30 @@
+{
+  "name": "electremote",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Control desktop media playback from another device on the same local network.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "packageManager": "pnpm@11.25.0",
+  "scripts": {
+    "dev": "corepack pnpm --filter @electremote/remote build && corepack pnpm --parallel --filter @electremote/remote --filter @electremote/desktop run dev:host",
+    "dev:remote": "corepack pnpm --filter @electremote/remote dev",
+    "build": "corepack pnpm --filter @electremote/remote build && corepack pnpm --filter @electremote/desktop build",
+    "lint": "eslint \"apps/**/*.{ts,tsx}\" \"libs/**/*.ts\"",
+    "typecheck": "corepack pnpm --recursive --if-present typecheck",
+    "format": "prettier --write --ignore-unknown .",
+    "format:check": "prettier --check --ignore-unknown .",
+    "package": "corepack pnpm --filter @electremote/remote build && corepack pnpm --filter @electremote/desktop package"
+  },
+  "devDependencies": {
+    "eslint": "10.9.1",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "eslint-plugin-react-refresh": "0.5.6",
+    "prettier": "3.9.6",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.69.0"
+  }
+}

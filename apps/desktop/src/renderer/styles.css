@@ -1,0 +1,270 @@
+:root {
+  color: #f4f2ea;
+  background: #181a17;
+  font-family: 'Avenir Next', 'Trebuchet MS', sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  min-width: 720px;
+  background-color: #181a17;
+  background-image:
+    linear-gradient(rgba(244, 242, 234, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(244, 242, 234, 0.035) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+button,
+select {
+  font: inherit;
+}
+
+.desktop-shell {
+  width: min(100%, 1080px);
+  margin: 0 auto;
+  padding: 40px 56px;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding-bottom: 28px;
+}
+
+.brand-mark {
+  display: grid;
+  width: 58px;
+  height: 58px;
+  place-items: center;
+  border: 2px solid #d8d34a;
+  border-radius: 6px;
+  color: #d8d34a;
+  font-family: 'Rockwell', 'Avenir Next', serif;
+  font-weight: 800;
+}
+
+.eyebrow,
+.section-label {
+  margin: 0 0 6px;
+  color: #d8d34a;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  margin-bottom: 0;
+  font-family: 'Rockwell', 'Avenir Next', serif;
+  font-size: 2.25rem;
+  letter-spacing: 0;
+}
+
+.status-band {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 32px;
+  padding: 28px 0;
+  border-top: 2px solid #f4f2ea;
+  border-bottom: 2px solid #f4f2ea;
+}
+
+.status-band h2 {
+  margin-bottom: 0;
+  font-family: 'Rockwell', 'Avenir Next', serif;
+  font-size: 4rem;
+  line-height: 0.9;
+  letter-spacing: 0;
+}
+
+.status-indicator {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  padding: 0 14px;
+  border: 1px solid #76796f;
+  border-radius: 4px;
+  color: #cacbc4;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.status-indicator--online {
+  border-color: #577f68;
+  color: #dcebdc;
+  background: rgba(43, 94, 66, 0.28);
+}
+
+.status-indicator--error {
+  border-color: #a54a40;
+  color: #ffd8d1;
+  background: rgba(135, 48, 38, 0.28);
+}
+
+.host-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 216px;
+  gap: 32px;
+  padding: 24px 0 0;
+}
+
+.host-details {
+  display: grid;
+  align-content: space-between;
+  gap: 24px;
+  min-width: 0;
+  padding: 4px 0;
+}
+
+.url-row,
+.adapter-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 42px;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.url-row code,
+.adapter-row select {
+  min-width: 0;
+  height: 42px;
+  border: 1px solid #5c5f57;
+  border-radius: 4px;
+  color: #f4f2ea;
+  background: #22241f;
+}
+
+.url-row code {
+  overflow: hidden;
+  padding: 11px 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.adapter-row select {
+  padding: 0 12px;
+}
+
+.icon-button {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid #76796f;
+  border-radius: 4px;
+  color: #f4f2ea;
+  background: #2b2e28;
+  cursor: pointer;
+}
+
+.icon-button:hover:not(:disabled) {
+  border-color: #d8d34a;
+  color: #d8d34a;
+}
+
+.icon-button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.icon-button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+
+.host-note {
+  margin: 0;
+  color: #a9aba3;
+  font-size: 0.82rem;
+}
+
+.qr-panel {
+  display: grid;
+  width: 216px;
+  height: 216px;
+  place-items: center;
+  border-radius: 6px;
+  color: #60635b;
+  background: #f4f2ea;
+}
+
+.qr-panel canvas {
+  display: block;
+}
+
+.error-panel {
+  margin-top: 32px;
+  padding: 24px;
+  border-left: 4px solid #bb4a3d;
+  background: #2d211e;
+}
+
+.error-panel p:last-child {
+  margin-bottom: 0;
+}
+
+.system-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  margin-top: 20px;
+  background: #4c4f48;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.system-item {
+  display: flex;
+  min-width: 0;
+  min-height: 104px;
+  align-items: center;
+  gap: 16px;
+  padding: 24px;
+  background: #22241f;
+}
+
+.system-item svg {
+  flex: 0 0 auto;
+  color: #d8d34a;
+}
+
+.system-item h3 {
+  margin-bottom: 4px;
+  font-size: 0.9rem;
+  letter-spacing: 0;
+}
+
+.system-item p {
+  margin-bottom: 0;
+  color: #a9aba3;
+  font-size: 0.82rem;
+}

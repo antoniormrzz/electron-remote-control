@@ -1,0 +1,156 @@
+:root {
+  color: #171814;
+  background: #f4f2ea;
+  font-family: 'Avenir Next', 'Trebuchet MS', sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  min-width: 320px;
+  background-color: #f4f2ea;
+  background-image:
+    linear-gradient(rgba(23, 24, 20, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(23, 24, 20, 0.045) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.remote-shell {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  width: min(100%, 720px);
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: clamp(24px, 6vw, 48px);
+}
+
+.remote-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 32px;
+  border-bottom: 2px solid #171814;
+}
+
+.eyebrow {
+  margin: 0 0 6px;
+  color: #bb3526;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0;
+  font-family: 'Rockwell', 'Avenir Next', serif;
+  font-size: clamp(2rem, 10vw, 3.4rem);
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 0.95;
+}
+
+.connection-status {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid #b8b5aa;
+  border-radius: 4px;
+  color: #626158;
+  background: rgba(255, 255, 255, 0.55);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.connection-status--connected {
+  border-color: #5c8d70;
+  color: #204e36;
+  background: #e3f0e6;
+}
+
+.connection-status--unavailable {
+  border-color: #cf8b80;
+  color: #8c2e22;
+  background: #f8e7e3;
+}
+
+.spin {
+  animation: spin 0.9s linear infinite;
+}
+
+.control-pad {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(112px, 1fr));
+  gap: 12px;
+  padding-top: 32px;
+}
+
+.control {
+  display: flex;
+  min-width: 0;
+  min-height: 112px;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 18px;
+  border: 2px solid #171814;
+  border-radius: 6px;
+  color: #171814;
+  background: #fffef9;
+  font-size: 0.95rem;
+  font-weight: 750;
+}
+
+.control--play-pause {
+  grid-column: 1 / -1;
+  color: #f8f6ef;
+  background: #1d4035;
+}
+
+.control:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 540px) {
+  .remote-header {
+    display: grid;
+  }
+
+  .connection-status {
+    width: fit-content;
+  }
+
+  .control {
+    flex-direction: column;
+    gap: 8px;
+    text-align: center;
+  }
+}
