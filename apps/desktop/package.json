@@ -11,8 +11,8 @@
     "build": "vite build --config vite.main.config.mts && vite build --config vite.preload.config.mts && vite build --config vite.renderer.config.mts",
     "lint": "eslint src forge.config.ts *.config.mts",
     "typecheck": "tsc --build",
-    "sync:remote": "node scripts/sync-remote.mjs",
-    "package": "pnpm run sync:remote && electron-forge package"
+    "sync:resources": "node scripts/sync-resources.mjs",
+    "package": "pnpm run sync:resources && electron-forge package"
   },
   "dependencies": {
     "@electremote/protocol": "workspace:*",
@@ -21,6 +21,7 @@
     "qrcode.react": "4.2.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "robotjs": "0.9.1",
     "ws": "8.21.3"
   },
   "devDependencies": {

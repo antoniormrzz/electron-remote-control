@@ -2,9 +2,11 @@ import path from 'node:path';
 import { app, BrowserWindow, clipboard, ipcMain } from 'electron';
 import { HOST_IPC_CHANNELS } from '../shared/host';
 import { HostServer } from './host-server';
+import { MediaController } from './media-controller';
 
 let mainWindow: BrowserWindow | null = null;
 let hostServer: HostServer | null = null;
+let mediaController: MediaController | null = null;
 let quitting = false;
 
 function broadcastHostSnapshot(): void {
@@ -51,6 +53,10 @@ function getRemoteAssetsPath(): string {
     : path.resolve(app.getAppPath(), '../remote/dist');
 }
 
+function getPackagedRobotBinaryPath(): string | undefined {
+  return app.isPackaged ? path.join(process.resourcesPath, 'robotjs', 'node.napi.node') : undefined;
+}
+
 function createMainWindow(): void {
   mainWindow = new BrowserWindow({
     width: 960,
@@ -88,7 +94,9 @@ function createMainWindow(): void {
 }
 
 void app.whenReady().then(() => {
-  hostServer = new HostServer(getRemoteAssetsPath());
+  mediaController = new MediaController(getPackagedRobotBinaryPath());
+  mediaController.initialize();
+  hostServer = new HostServer(getRemoteAssetsPath(), mediaController);
   hostServer.subscribe((snapshot) => {
     broadcastHostSnapshot();
     if (snapshot.status === 'error') {
@@ -103,6 +111,9 @@ void app.whenReady().then(() => {
   void hostServer.start();
 
   app.on('activate', () => {
+    mediaController?.refreshStatus();
+    hostServer?.refreshControlStatus();
+
     if (BrowserWindow.getAllWindows().length === 0) {
       createMainWindow();
     }

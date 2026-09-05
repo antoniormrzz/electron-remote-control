@@ -17,6 +17,7 @@ export interface OnlineHostSnapshot {
   port: number;
   connectionCount: number;
   localOnly: boolean;
+  controlStatus: 'ready' | 'permission-required' | 'unavailable';
 }
 
 export interface ErrorHostSnapshot {

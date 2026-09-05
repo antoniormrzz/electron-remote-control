@@ -121,30 +121,30 @@ pnpm package
 - [x] Serve the production remote build.
 - [x] Display the remote URL and QR code.
 - [x] Show server and connection status.
-- [ ] Handle macOS Accessibility permission.
-- [ ] Keep RobotJS in the Electron main process.
+- [x] Handle macOS Accessibility permission.
+- [x] Keep RobotJS in the Electron main process.
 
 ### Communication
 
 - [x] Establish WebSocket connections from remote devices.
 - [x] Define the supported command list.
-- [ ] Reject unknown or malformed messages.
+- [x] Reject unknown or malformed messages.
 - [x] Track connected devices for the current session.
-- [ ] Report command failures to the remote interface.
+- [x] Report command failures to the remote interface.
 - [x] Reconnect automatically after temporary network interruptions.
 
 ### Remote Interface
 
 - [x] Build a responsive, touch-friendly control layout.
-- [ ] Implement all initial media controls.
+- [x] Implement all initial media controls.
 - [ ] Show connection and command status.
-- [ ] Prevent accidental duplicate commands where appropriate.
+- [x] Prevent accidental duplicate commands where appropriate.
 - [ ] Support current mobile browsers.
 
 ### Packaging
 
 - [x] Bundle the remote build with Electron.
-- [ ] Bundle and unpack the RobotJS native binary correctly.
+- [x] Bundle and unpack the RobotJS native binary correctly.
 - [ ] Produce Windows installers.
 - [ ] Produce macOS packages.
 - [ ] Produce Linux packages.

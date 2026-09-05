@@ -2,9 +2,12 @@ import { randomBytes } from 'node:crypto';
 import fs from 'node:fs';
 import type { Server } from 'node:http';
 import path from 'node:path';
+import { isControlRequest } from '@electremote/protocol';
+import type { ControlResult } from '@electremote/protocol';
 import express from 'express';
 import { WebSocket, WebSocketServer } from 'ws';
 import type { HostSnapshot, OnlineHostSnapshot } from '../shared/host';
+import { MediaController } from './media-controller';
 import { listNetworkInterfaces, selectPreferredInterface } from './network-interfaces';
 
 const COOKIE_NAME = 'electremote_session';
@@ -51,7 +54,10 @@ export class HostServer {
   private heartbeat: ReturnType<typeof setInterval> | null = null;
   private startPromise: Promise<HostSnapshot> | null = null;
 
-  public constructor(private readonly remoteAssetsPath: string) {}
+  public constructor(
+    private readonly remoteAssetsPath: string,
+    private readonly mediaController: MediaController,
+  ) {}
 
   public getSnapshot(): HostSnapshot {
     return this.snapshot;
@@ -85,6 +91,11 @@ export class HostServer {
     }
 
     this.selectedInterface = candidate;
+    return this.publishOnlineSnapshot();
+  }
+
+  public refreshControlStatus(): HostSnapshot {
+    this.mediaController.refreshStatus();
     return this.publishOnlineSnapshot();
   }
 
@@ -185,7 +196,7 @@ export class HostServer {
   }
 
   private configureWebSockets(server: Server): void {
-    const webSocketServer = new WebSocketServer({ noServer: true });
+    const webSocketServer = new WebSocketServer({ noServer: true, maxPayload: 1_024 });
     this.webSocketServer = webSocketServer;
 
     server.on('upgrade', (request, socket, head) => {
@@ -216,7 +227,37 @@ export class HostServer {
       this.publishOnlineSnapshot();
 
       socket.on('pong', () => this.socketHealth.set(socket, true));
-      socket.on('message', () => socket.close(1008, 'Controls are not available yet.'));
+      socket.on('message', (data, isBinary) => {
+        if (isBinary) {
+          socket.close(1008, 'Invalid control message.');
+          return;
+        }
+
+        let value: unknown;
+        try {
+          value = JSON.parse(data.toString());
+        } catch {
+          socket.close(1008, 'Invalid control message.');
+          return;
+        }
+
+        if (!isControlRequest(value)) {
+          socket.close(1008, 'Invalid control message.');
+          return;
+        }
+
+        const execution = this.mediaController.execute(value.command);
+        const result: ControlResult = execution.ok
+          ? { type: 'control-result', id: value.id, ok: true }
+          : {
+              type: 'control-result',
+              id: value.id,
+              ok: false,
+              error: execution.error,
+            };
+        socket.send(JSON.stringify(result));
+        this.publishOnlineSnapshot();
+      });
       socket.on('close', () => {
         this.socketHealth.delete(socket);
         this.publishOnlineSnapshot();
@@ -255,6 +296,7 @@ export class HostServer {
       port: address.port,
       connectionCount: this.socketHealth.size,
       localOnly: this.selectedInterface.localOnly,
+      controlStatus: this.mediaController.getStatus(),
     };
     return this.publish(snapshot);
   }

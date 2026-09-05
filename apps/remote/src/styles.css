@@ -120,6 +120,10 @@ h1 {
   background: #fffef9;
   font-size: 0.95rem;
   font-weight: 750;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease,
+    opacity 120ms ease;
 }
 
 .control--play-pause {
@@ -131,6 +135,19 @@ h1 {
 .control:disabled {
   cursor: not-allowed;
   opacity: 0.72;
+}
+
+.control:not(:disabled) {
+  cursor: pointer;
+}
+
+.control:not(:disabled):active {
+  transform: translateY(1px);
+}
+
+.control:focus-visible {
+  outline: 3px solid #bb3526;
+  outline-offset: 3px;
 }
 
 @keyframes spin {

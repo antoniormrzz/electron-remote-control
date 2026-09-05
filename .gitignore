@@ -6,6 +6,7 @@ node_modules/
 dist/
 out/
 apps/desktop/resources/remote/
+apps/desktop/resources/robotjs/
 
 # Tool caches and reports
 *.tsbuildinfo

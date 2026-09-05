@@ -4,6 +4,7 @@ packages:
 
 allowBuilds:
   electron: true
+  robotjs: true
 
 blockExoticSubdeps: false
 disallowWorkspaceCycles: true

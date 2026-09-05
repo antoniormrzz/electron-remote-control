@@ -50,6 +50,15 @@ export function App() {
           ? 'Local only'
           : 'Online';
 
+  const controlStatus =
+    snapshot.status !== 'online'
+      ? 'Unavailable'
+      : snapshot.controlStatus === 'ready'
+        ? 'Ready'
+        : snapshot.controlStatus === 'permission-required'
+          ? 'Accessibility required'
+          : 'Unavailable';
+
   async function refreshInterfaces(): Promise<void> {
     if (!window.electremote) {
       return;
@@ -201,7 +210,7 @@ export function App() {
           <RadioTower aria-hidden="true" />
           <div>
             <h3>Controls</h3>
-            <p>Coming next</p>
+            <p>{controlStatus}</p>
           </div>
         </article>
       </section>

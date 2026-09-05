@@ -10,7 +10,7 @@ export default defineConfig({
     },
     outDir: '.vite/build',
     rollupOptions: {
-      external: ['electron', /^node:/],
+      external: ['electron', 'robotjs', /^node:/],
       output: {
         entryFileNames: 'main.js',
       },
@@ -18,6 +18,6 @@ export default defineConfig({
     ssr: true,
   },
   ssr: {
-    noExternal: true,
+    noExternal: [/^(?!robotjs$).+/],
   },
 });

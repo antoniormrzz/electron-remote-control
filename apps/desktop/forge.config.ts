@@ -5,7 +5,7 @@ const config: ForgeConfig = {
   packagerConfig: {
     appBundleId: 'com.antoniormrzz.electremote',
     asar: true,
-    extraResource: ['resources/remote'],
+    extraResource: ['resources/remote', 'resources/robotjs'],
     name: 'Electremote',
   },
   makers: [],

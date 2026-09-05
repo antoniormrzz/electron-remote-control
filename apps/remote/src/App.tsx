@@ -27,7 +27,7 @@ const COMMAND_DETAILS = {
 } satisfies Record<ControlCommand, CommandDetails>;
 
 export function App() {
-  const connectionState = useHostConnection();
+  const { state: connectionState, pendingCommands, sendControl } = useHostConnection();
   const connected = connectionState === 'connected';
   const ConnectionIcon = connected
     ? Wifi
@@ -69,8 +69,9 @@ export function App() {
               className={`control control--${command}`}
               type="button"
               key={command}
-              disabled
-              title="Controls will be enabled in the next release"
+              disabled={!connected || pendingCommands.has(command)}
+              aria-busy={pendingCommands.has(command)}
+              onClick={() => sendControl(command)}
             >
               <Icon aria-hidden="true" size={28} strokeWidth={1.9} />
               <span>{details.label}</span>
