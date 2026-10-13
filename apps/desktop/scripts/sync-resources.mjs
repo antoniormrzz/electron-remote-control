@@ -23,11 +23,12 @@ await fs.mkdir(packagedRemoteDirectory, { recursive: true });
 await fs.cp(remoteBuildDirectory, packagedRemoteDirectory, { recursive: true });
 
 const robotDirectory = path.dirname(require.resolve('robotjs/package.json'));
+const robotBinaryName = process.platform === 'linux' ? 'node.napi.glibc.node' : 'node.napi.node';
 const robotPrebuild = path.join(
   robotDirectory,
   'prebuilds',
   `${process.platform}-${process.arch}`,
-  'node.napi.node',
+  robotBinaryName,
 );
 const packagedRobotDirectory = path.join(resourcesDirectory, 'robotjs');
 await fs.access(robotPrebuild);
