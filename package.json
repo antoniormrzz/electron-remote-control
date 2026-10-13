@@ -4,20 +4,27 @@
   "private": true,
   "type": "module",
   "description": "Control desktop media playback from another device on the same local network.",
+  "author": "Antonio Ramirez",
+  "homepage": "https://github.com/antoniormrzz/electron-remote-control#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/antoniormrzz/electron-remote-control.git"
+  },
   "license": "MIT",
   "engines": {
     "node": ">=24 <25"
   },
   "packageManager": "pnpm@11.25.0",
   "scripts": {
-    "dev": "corepack pnpm --filter @electremote/remote build && corepack pnpm --parallel --filter @electremote/remote --filter @electremote/desktop run dev:host",
-    "dev:remote": "corepack pnpm --filter @electremote/remote dev",
-    "build": "corepack pnpm --filter @electremote/remote build && corepack pnpm --filter @electremote/desktop build",
+    "dev": "pnpm --filter @electremote/remote build && pnpm --parallel --filter @electremote/remote --filter @electremote/desktop run dev:host",
+    "dev:remote": "pnpm --filter @electremote/remote dev",
+    "build": "pnpm --filter @electremote/remote build && pnpm --filter @electremote/desktop build",
     "lint": "eslint \"apps/**/*.{ts,tsx}\" \"libs/**/*.ts\"",
-    "typecheck": "corepack pnpm --recursive --if-present typecheck",
+    "typecheck": "pnpm --recursive --if-present typecheck",
     "format": "prettier --write --ignore-unknown .",
     "format:check": "prettier --check --ignore-unknown .",
-    "package": "corepack pnpm --filter @electremote/remote build && corepack pnpm --filter @electremote/desktop package"
+    "package": "pnpm --filter @electremote/remote build && pnpm --filter @electremote/desktop package",
+    "make": "pnpm --filter @electremote/remote build && pnpm --filter @electremote/desktop make"
   },
   "devDependencies": {
     "eslint": "10.9.1",

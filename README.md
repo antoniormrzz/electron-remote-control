@@ -146,16 +146,16 @@ pnpm package
 - [x] Bundle the remote build with Electron.
 - [x] Bundle and unpack the RobotJS native binary correctly.
 - [ ] Produce Windows installers.
-- [ ] Produce macOS packages.
+- [x] Produce macOS packages.
 - [ ] Produce Linux packages.
-- [ ] Automate release builds with GitHub Actions.
-- [ ] Document signing and notarization requirements.
+- [x] Automate release builds with GitHub Actions.
+- [x] Document signing and notarization requirements.
 - [ ] Verify x64 and ARM64 support where available.
 
 ### Release Preparation
 
 - [ ] Confirm the final product name and branding.
-- [ ] Add application icons.
+- [x] Add application icons.
 - [ ] Add contributor documentation.
 - [ ] Add a security policy.
 - [ ] Document installation and usage.

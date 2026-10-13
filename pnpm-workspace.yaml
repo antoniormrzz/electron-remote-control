@@ -4,7 +4,11 @@ packages:
 
 allowBuilds:
   electron: true
+  electron-winstaller: true
+  fs-xattr: true
+  macos-alias: true
   robotjs: true
+  sharp: true
 
 blockExoticSubdeps: false
 disallowWorkspaceCycles: true

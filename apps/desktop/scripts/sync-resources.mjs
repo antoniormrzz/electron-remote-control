@@ -6,6 +6,14 @@ import { fileURLToPath } from 'node:url';
 const require = createRequire(import.meta.url);
 const desktopDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const resourcesDirectory = path.join(desktopDirectory, 'resources');
+const assetsDirectory = path.join(desktopDirectory, 'assets');
+const iconPath = path.join(assetsDirectory, 'icon.png');
+
+await Promise.all(
+  ['icon.png', 'icon.ico', 'icon.icns'].map((fileName) =>
+    fs.access(path.join(assetsDirectory, fileName)),
+  ),
+);
 
 const remoteBuildDirectory = path.resolve(desktopDirectory, '../remote/dist');
 const packagedRemoteDirectory = path.join(resourcesDirectory, 'remote');
@@ -26,3 +34,6 @@ await fs.access(robotPrebuild);
 await fs.rm(packagedRobotDirectory, { recursive: true, force: true });
 await fs.mkdir(packagedRobotDirectory, { recursive: true });
 await fs.copyFile(robotPrebuild, path.join(packagedRobotDirectory, 'node.napi.node'));
+
+await fs.access(iconPath);
+await fs.copyFile(iconPath, path.join(resourcesDirectory, 'icon.png'));

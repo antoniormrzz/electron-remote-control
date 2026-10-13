@@ -7,6 +7,7 @@ dist/
 out/
 apps/desktop/resources/remote/
 apps/desktop/resources/robotjs/
+apps/desktop/resources/icon.png
 
 # Tool caches and reports
 *.tsbuildinfo

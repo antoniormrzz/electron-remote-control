@@ -1,0 +1,135 @@
+name: Draft Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  metadata:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Verify release tag
+        if: github.event_name == 'push'
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: node apps/desktop/scripts/verify-release-tag.mjs "$RELEASE_TAG"
+
+  build:
+    needs: metadata
+    name: ${{ matrix.artifact }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            artifact: electremote-macos-arm64
+            expected: '\.dmg$'
+          - runner: macos-15-intel
+            artifact: electremote-macos-x64
+            expected: '\.dmg$'
+          - runner: windows-latest
+            artifact: electremote-windows-x64
+            expected: '\.exe$'
+          - runner: ubuntu-24.04
+            artifact: electremote-linux-x64
+            expected: '\.(deb|rpm)$'
+          - runner: ubuntu-24.04-arm
+            artifact: electremote-linux-arm64
+            expected: '\.(deb|rpm)$'
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 11.25.0
+          cache: true
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Install Linux packaging tools
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install --yes fakeroot rpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Check formatting
+        run: pnpm format:check
+      - name: Lint
+        run: pnpm lint
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Build
+        run: pnpm build
+      - name: Make installers
+        run: pnpm make
+      - name: Verify RobotJS resource
+        shell: bash
+        run: test -f "apps/desktop/resources/robotjs/node.napi.node"
+      - name: Verify release artifacts
+        shell: bash
+        run: find apps/desktop/out/make -type f | grep -E '${{ matrix.expected }}'
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.artifact }}
+          path: apps/desktop/out/make/**/*
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+      - name: Download release artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: electremote-*
+          path: release-assets
+          merge-multiple: true
+      - name: Create release checksums
+        working-directory: release-assets
+        run: find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS
+      - name: Create release notes header
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          {
+            printf '%s\n' '> [!WARNING]'
+            printf '> These builds are unsigned. macOS Gatekeeper and Windows SmartScreen will display warnings. Review the installation instructions in [docs/DISTRIBUTION.md](https://github.com/%s/blob/%s/docs/DISTRIBUTION.md)\n' "$GITHUB_REPOSITORY" "$RELEASE_TAG"
+            printf '\n'
+          } > release-notes.md
+      - name: Create draft GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          mapfile -d '' assets < <(find release-assets -type f -print0)
+          gh release create "$RELEASE_TAG" "${assets[@]}" \
+            --draft \
+            --generate-notes \
+            --notes-file release-notes.md \
+            --title "Electremote $RELEASE_TAG" \
+            --verify-tag

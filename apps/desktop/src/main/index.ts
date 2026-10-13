@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { app, BrowserWindow, clipboard, ipcMain } from 'electron';
+import squirrelStartup from 'electron-squirrel-startup';
 import { HOST_IPC_CHANNELS } from '../shared/host';
 import { HostServer } from './host-server';
 import { MediaController } from './media-controller';
@@ -8,6 +9,12 @@ let mainWindow: BrowserWindow | null = null;
 let hostServer: HostServer | null = null;
 let mediaController: MediaController | null = null;
 let quitting = false;
+
+const hasSingleInstanceLock = app.requestSingleInstanceLock();
+
+if (!hasSingleInstanceLock || squirrelStartup) {
+  app.quit();
+}
 
 function broadcastHostSnapshot(): void {
   if (!hostServer) {
@@ -57,13 +64,26 @@ function getPackagedRobotBinaryPath(): string | undefined {
   return app.isPackaged ? path.join(process.resourcesPath, 'robotjs', 'node.napi.node') : undefined;
 }
 
+function getWindowIconPath(): string | undefined {
+  if (process.platform !== 'linux') {
+    return undefined;
+  }
+
+  return app.isPackaged
+    ? path.join(process.resourcesPath, 'icon.png')
+    : path.resolve(app.getAppPath(), 'assets/icon.png');
+}
+
 function createMainWindow(): void {
+  const icon = getWindowIconPath();
+
   mainWindow = new BrowserWindow({
     width: 960,
     height: 680,
     minWidth: 720,
     minHeight: 560,
     backgroundColor: '#181a17',
+    ...(icon ? { icon } : {}),
     show: false,
     title: 'Electremote',
     webPreferences: {
@@ -93,32 +113,48 @@ function createMainWindow(): void {
   }
 }
 
-void app.whenReady().then(() => {
-  mediaController = new MediaController(getPackagedRobotBinaryPath());
-  mediaController.initialize();
-  hostServer = new HostServer(getRemoteAssetsPath(), mediaController);
-  hostServer.subscribe((snapshot) => {
-    broadcastHostSnapshot();
-    if (snapshot.status === 'error') {
-      console.error(`Host failed to start: ${snapshot.message}`);
-    }
-    if (!app.isPackaged && snapshot.status === 'online') {
-      console.info(`Remote available at ${snapshot.url} (${snapshot.connectionCount} connected)`);
-    }
-  });
-  registerHostIpc();
-  createMainWindow();
-  void hostServer.start();
+app.setAppUserModelId('com.squirrel.Electremote.Electremote');
 
-  app.on('activate', () => {
-    mediaController?.refreshStatus();
-    hostServer?.refreshControlStatus();
+app.on('second-instance', () => {
+  if (!mainWindow) {
+    return;
+  }
 
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createMainWindow();
-    }
-  });
+  if (mainWindow.isMinimized()) {
+    mainWindow.restore();
+  }
+  mainWindow.show();
+  mainWindow.focus();
 });
+
+if (hasSingleInstanceLock && !squirrelStartup) {
+  void app.whenReady().then(() => {
+    mediaController = new MediaController(getPackagedRobotBinaryPath());
+    mediaController.initialize();
+    hostServer = new HostServer(getRemoteAssetsPath(), mediaController);
+    hostServer.subscribe((snapshot) => {
+      broadcastHostSnapshot();
+      if (snapshot.status === 'error') {
+        console.error(`Host failed to start: ${snapshot.message}`);
+      }
+      if (!app.isPackaged && snapshot.status === 'online') {
+        console.info(`Remote available at ${snapshot.url} (${snapshot.connectionCount} connected)`);
+      }
+    });
+    registerHostIpc();
+    createMainWindow();
+    void hostServer.start();
+
+    app.on('activate', () => {
+      mediaController?.refreshStatus();
+      hostServer?.refreshControlStatus();
+
+      if (BrowserWindow.getAllWindows().length === 0) {
+        createMainWindow();
+      }
+    });
+  });
+}
 
 app.on('before-quit', (event) => {
   if (quitting || !hostServer) {
