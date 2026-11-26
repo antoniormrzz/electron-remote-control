@@ -41,7 +41,6 @@ const config: ForgeConfig = {
     new MakerDMG(
       {
         icon: path.join(assetsDirectory, 'icon.icns'),
-        name: 'Electremote',
         overwrite: true,
       },
       ['darwin'],

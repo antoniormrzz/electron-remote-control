@@ -83,6 +83,19 @@ jobs:
       - name: Verify release artifacts
         shell: bash
         run: find apps/desktop/out/make -type f | grep -E '${{ matrix.expected }}'
+      - name: Verify macOS disk image mounts
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          version="$(node -p "require('./apps/desktop/package.json').version")"
+          arch="$(node -p 'process.arch')"
+          image="apps/desktop/out/make/Electremote-$version-$arch.dmg"
+          hdiutil verify "$image"
+          mountpoint="$(mktemp -d)"
+          trap 'rmdir "$mountpoint"' EXIT
+          hdiutil attach -readonly -nobrowse -mountpoint "$mountpoint" "$image"
+          trap 'hdiutil detach "$mountpoint" && rmdir "$mountpoint"' EXIT
+          test -f "$mountpoint/Electremote.app/Contents/Info.plist"
       - name: Upload release artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -105,11 +118,27 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           pattern: electremote-*
-          path: release-assets
-          merge-multiple: true
-      - name: Create release checksums
-        working-directory: release-assets
-        run: find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS
+          path: release-artifacts
+      - name: Stage unique release assets and create checksums
+        shell: bash
+        run: |
+          mkdir release-assets
+          find release-artifacts -type f -print0 | while IFS= read -r -d '' asset; do
+            name="${asset##*/}"
+            if [[ "$name" == SHA256SUMS || -e "release-assets/$name" ]]; then
+              printf 'Duplicate or reserved release asset name: %s\n' "$name" >&2
+              exit 1
+            fi
+            mv -- "$asset" "release-assets/$name"
+          done
+          cd release-assets
+          shopt -s nullglob
+          assets=(*)
+          if [[ ${#assets[@]} -eq 0 ]]; then
+            echo 'No release assets to publish.' >&2
+            exit 1
+          fi
+          sha256sum -- "${assets[@]}" > SHA256SUMS
       - name: Create release notes header
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -126,7 +155,7 @@ jobs:
           RELEASE_TAG: ${{ github.ref_name }}
         shell: bash
         run: |
-          mapfile -d '' assets < <(find release-assets -type f -print0)
+          assets=(release-assets/*)
           gh release create "$RELEASE_TAG" "${assets[@]}" \
             --draft \
             --generate-notes \

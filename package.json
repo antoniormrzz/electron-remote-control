@@ -1,6 +1,6 @@
 {
   "name": "electremote",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "description": "Control desktop media playback from another device on the same local network.",

@@ -27,11 +27,11 @@ Generated files are written under `apps/desktop/out/`.
 
 ## Release Tags
 
-The tag and both package versions must match exactly. For example, version `0.1.0` must use tag `v0.1.0`.
+The tag and both package versions must match exactly. For example, version `0.1.1` must use tag `v0.1.1`.
 
 ```sh
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.1.1
+git push origin v0.1.1
 ```
 
 A matching tag verifies package versions, builds the installers below, and creates a draft GitHub Release after all builds succeed.
@@ -46,19 +46,21 @@ The release artifacts are:
 
 | Platform | Architecture | Artifact                                             |
 | -------- | ------------ | ---------------------------------------------------- |
-| macOS    | ARM64        | DMG                                                  |
-| macOS    | x64          | DMG                                                  |
+| macOS    | ARM64        | `Electremote-<version>-arm64.dmg`                    |
+| macOS    | x64          | `Electremote-<version>-x64.dmg`                      |
 | Windows  | x64          | Squirrel Setup.exe, NuGet package, RELEASES metadata |
 | Linux    | ARM64        | DEB and RPM                                          |
 | Linux    | x64          | DEB and RPM                                          |
 
-When every build succeeds, GitHub Actions creates a draft release. Review and smoke-test the files before publishing it manually.
+For tagged builds, GitHub Actions creates a draft release only after all build and artifact checks pass, including mounting each macOS disk image. Review and smoke-test the files before publishing it manually.
 
 ## Unsigned Build Warnings
 
 ### macOS
 
 These builds are not signed or notarized. macOS Gatekeeper may report that Apple cannot check the application for malicious software.
+
+If macOS reports **No mountable file systems**, the disk image failed to mount; this is not a Gatekeeper warning. Verify the download against `SHA256SUMS` and download it again if the checksum does not match.
 
 Only continue when the file came from this repository's GitHub Release and its checksum matches. In Finder, Control-click Electremote, choose **Open**, then confirm **Open**. Depending on the macOS version, you can also approve the blocked application under **System Settings > Privacy & Security**.
 
@@ -83,8 +85,8 @@ The DEB and RPM files are not distributed through a signed package repository. I
 Each draft release includes a `SHA256SUMS` file containing the SHA-256 checksums of its installer and package files. Download it alongside the file you intend to install, then verify the file before running it:
 
 ```sh
-# macOS
-shasum -a 256 -c SHA256SUMS
+# macOS (replace the filename with the one you downloaded)
+shasum -a 256 Electremote-0.1.1-arm64.dmg
 ```
 
 ```powershell
@@ -92,4 +94,4 @@ shasum -a 256 -c SHA256SUMS
 Get-FileHash path\to\file -Algorithm SHA256
 ```
 
-On Windows, compare the `Hash` value with the entry for that file in `SHA256SUMS`. On Linux, use `sha256sum -c SHA256SUMS`.
+Compare the resulting hash with the entry for that file in `SHA256SUMS`. On Linux, use `sha256sum path/to/file`.
