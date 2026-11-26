@@ -1,7 +1,7 @@
 {
   "name": "@electremote/desktop",
   "productName": "Electremote",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "description": "Control desktop media playback from another device on the same local network.",
   "author": "Antonio Ramirez",

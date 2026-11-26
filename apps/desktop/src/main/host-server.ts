@@ -139,7 +139,7 @@ export class HostServer {
       if (requestToken === this.token) {
         response.cookie(COOKIE_NAME, this.token, {
           httpOnly: true,
-          sameSite: 'strict',
+          sameSite: 'lax',
           path: '/',
         });
         response.redirect('/');

@@ -27,11 +27,11 @@ Generated files are written under `apps/desktop/out/`.
 
 ## Release Tags
 
-The tag and both package versions must match exactly. For example, version `0.1.1` must use tag `v0.1.1`.
+The tag and both package versions must match exactly. For example, version `0.1.2` must use tag `v0.1.2`.
 
 ```sh
-git tag v0.1.1
-git push origin v0.1.1
+git tag v0.1.2
+git push origin v0.1.2
 ```
 
 A matching tag verifies package versions, builds the installers below, and creates a draft GitHub Release after all builds succeed.
@@ -53,6 +53,10 @@ The release artifacts are:
 | Linux    | x64          | DEB and RPM                                          |
 
 For tagged builds, GitHub Actions creates a draft release only after all build and artifact checks pass, including mounting each macOS disk image. Review and smoke-test the files before publishing it manually.
+
+## Connecting from a Phone
+
+Connect the phone and desktop to the same local network, then scan the QR code shown in the running desktop app. If the browser shows **Forbidden**, open the full, current QR link directly in Safari or Chrome instead of a scanner preview. Older links stop working after Electremote restarts, and the browser needs to accept the session cookie to load the controls.
 
 ## Unsigned Build Warnings
 
@@ -86,7 +90,7 @@ Each draft release includes a `SHA256SUMS` file containing the SHA-256 checksums
 
 ```sh
 # macOS (replace the filename with the one you downloaded)
-shasum -a 256 Electremote-0.1.1-arm64.dmg
+shasum -a 256 Electremote-0.1.2-arm64.dmg
 ```
 
 ```powershell
