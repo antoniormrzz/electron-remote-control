@@ -21,7 +21,7 @@
     "build": "pnpm --filter @electremote/remote build && pnpm --filter @electremote/desktop build",
     "lint": "eslint \"apps/**/*.{ts,tsx}\" \"libs/**/*.ts\"",
     "typecheck": "pnpm --recursive --if-present typecheck",
-    "test": "node --test apps/desktop/test/clipboard.test.mjs libs/protocol/test/keyboard.test.mjs",
+    "test": "node --test apps/desktop/test/host-server.test.mjs libs/protocol/test/keyboard.test.mjs",
     "format": "prettier --write --ignore-unknown .",
     "format:check": "prettier --check --ignore-unknown .",
     "package": "pnpm --filter @electremote/remote build && pnpm --filter @electremote/desktop package",

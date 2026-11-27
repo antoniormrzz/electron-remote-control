@@ -19,6 +19,9 @@ const api: ElectremoteApi = {
   setClipboardEnabled: (enabled) =>
     ipcRenderer.invoke(HOST_IPC_CHANNELS.setClipboardEnabled, enabled),
   copyHostUrl: () => ipcRenderer.invoke(HOST_IPC_CHANNELS.copyUrl),
+  copyPairingUrl: () => ipcRenderer.invoke(HOST_IPC_CHANNELS.copyPairingUrl),
+  changePort: (port) => ipcRenderer.invoke(HOST_IPC_CHANNELS.changePort, port),
+  resetPairedDevices: () => ipcRenderer.invoke(HOST_IPC_CHANNELS.resetPairedDevices),
 };
 
 contextBridge.exposeInMainWorld('electremote', api);

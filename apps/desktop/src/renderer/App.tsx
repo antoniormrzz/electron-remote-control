@@ -4,6 +4,7 @@ import {
   Clipboard,
   Copy,
   Keyboard,
+  Link,
   MonitorUp,
   Mouse,
   RadioTower,
@@ -12,7 +13,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
-import { isControlMode } from '../shared/host';
+import { isControlMode, isHostPort } from '../shared/host';
 import type { HostSnapshot } from '../shared/host';
 
 const INITIAL_SNAPSHOT: HostSnapshot = { status: 'starting' };
@@ -26,7 +27,14 @@ export function App() {
     window.electremote ? INITIAL_SNAPSHOT : BROWSER_SNAPSHOT,
   );
   const [busy, setBusy] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<'address' | 'pairing' | null>(null);
+  const [copyError, setCopyError] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [portDraft, setPortDraft] = useState<string | null>(null);
+  const [settingsFeedback, setSettingsFeedback] = useState<{
+    message: string;
+    error: boolean;
+  } | null>(null);
   const [controlModeError, setControlModeError] = useState(false);
   const [inputError, setInputError] = useState<'touchpad' | 'keyboard' | 'clipboard' | null>(null);
 
@@ -66,6 +74,7 @@ export function App() {
 
   const controlStatus = snapshot.status === 'online' ? snapshot.controlStatus : 'unavailable';
   const needsPermission = controlStatus === 'permission-required';
+  const currentPort = snapshot.status === 'starting' ? undefined : snapshot.port;
 
   async function refreshInterfaces(): Promise<void> {
     if (!window.electremote) {
@@ -93,10 +102,66 @@ export function App() {
     }
   }
 
-  async function copyUrl(): Promise<void> {
-    if (window.electremote && (await window.electremote.copyHostUrl())) {
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1_500);
+  async function copyUrl(kind: 'address' | 'pairing'): Promise<void> {
+    setCopyError(false);
+    try {
+      const api = window.electremote;
+      if (!api || !(await (kind === 'address' ? api.copyHostUrl() : api.copyPairingUrl()))) {
+        throw new Error('The host is unavailable.');
+      }
+
+      setCopied(kind);
+      window.setTimeout(() => setCopied((current) => (current === kind ? null : current)), 1_500);
+    } catch (error) {
+      console.error('Unable to copy the Electremote link.', error);
+      setCopyError(true);
+    }
+  }
+
+  async function changePort(port: number): Promise<void> {
+    setSettingsFeedback(null);
+    if (!isHostPort(port)) {
+      setSettingsFeedback({ message: 'Enter a whole number from 1024 to 65535.', error: true });
+      return;
+    }
+
+    setBusy(true);
+    try {
+      if (!window.electremote) {
+        throw new Error('Desktop controls are unavailable.');
+      }
+      const next = await window.electremote.changePort(port);
+      setSnapshot(next);
+      if (next.status === 'online') {
+        setPortDraft(null);
+        setShowSettings(false);
+      }
+    } catch (error) {
+      console.error('Unable to change the host port.', error);
+      setSettingsFeedback({ message: 'Could not change the port.', error: true });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function resetPairedDevices(): Promise<void> {
+    if (!window.confirm('Disconnect all paired devices? They will need to scan a new QR code.')) {
+      return;
+    }
+
+    setBusy(true);
+    setSettingsFeedback(null);
+    try {
+      if (!window.electremote) {
+        throw new Error('Desktop controls are unavailable.');
+      }
+      setSnapshot(await window.electremote.resetPairedDevices());
+      setSettingsFeedback({ message: 'Paired devices reset.', error: false });
+    } catch (error) {
+      console.error('Unable to reset paired devices.', error);
+      setSettingsFeedback({ message: 'Could not reset paired devices.', error: true });
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -231,9 +296,26 @@ export function App() {
                   type="button"
                   title="Copy remote address"
                   aria-label="Copy remote address"
-                  onClick={() => void copyUrl()}
+                  onClick={() => void copyUrl('address')}
                 >
-                  {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+                  {copied === 'address' ? (
+                    <Check aria-hidden="true" />
+                  ) : (
+                    <Copy aria-hidden="true" />
+                  )}
+                </button>
+                <button
+                  className="icon-button"
+                  type="button"
+                  title="Copy one-time pairing link"
+                  aria-label="Copy one-time pairing link"
+                  onClick={() => void copyUrl('pairing')}
+                >
+                  {copied === 'pairing' ? (
+                    <Check aria-hidden="true" />
+                  ) : (
+                    <Link aria-hidden="true" />
+                  )}
                 </button>
               </div>
             </div>
@@ -305,6 +387,11 @@ export function App() {
                   Could not change the {inputError} setting. Try again.
                 </p>
               )}
+              {copyError && (
+                <p className="host-note host-note--error" role="alert">
+                  Could not copy the link. Try again.
+                </p>
+              )}
             </div>
           </div>
 
@@ -312,7 +399,7 @@ export function App() {
             {snapshot.localOnly ? (
               <RadioTower aria-hidden="true" size={48} strokeWidth={1.5} />
             ) : (
-              <QRCodeCanvas value={snapshot.url} size={168} marginSize={2} level="M" />
+              <QRCodeCanvas value={snapshot.pairingUrl} size={168} marginSize={2} level="M" />
             )}
           </div>
         </section>
@@ -322,6 +409,53 @@ export function App() {
         <section className="error-panel" role="alert">
           <p className="section-label">Startup error</p>
           <p>{snapshot.message}</p>
+        </section>
+      )}
+
+      {currentPort !== undefined && (showSettings || snapshot.status === 'error') && (
+        <section className="connection-settings" aria-label="Connection settings">
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              void changePort(portDraft === null ? currentPort : Number(portDraft));
+            }}
+          >
+            <label htmlFor="host-port">Host port</label>
+            <div className="connection-settings-actions">
+              <input
+                id="host-port"
+                type="number"
+                min={1024}
+                max={65535}
+                step={1}
+                required
+                value={portDraft ?? currentPort}
+                disabled={busy}
+                onChange={(event) => setPortDraft(event.target.value)}
+              />
+              <button className="input-toggle" type="submit" disabled={busy}>
+                Save and restart host
+              </button>
+              {snapshot.status === 'online' && (
+                <button
+                  className="input-toggle"
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void resetPairedDevices()}
+                >
+                  Reset paired devices
+                </button>
+              )}
+            </div>
+          </form>
+          {settingsFeedback && (
+            <p
+              className={`host-note${settingsFeedback.error ? ' host-note--error' : ''}`}
+              role="status"
+            >
+              {settingsFeedback.message}
+            </p>
+          )}
         </section>
       )}
 
@@ -345,7 +479,22 @@ export function App() {
           <MonitorUp aria-hidden="true" />
           <div>
             <h3>Desktop</h3>
-            <p>Renderer active</p>
+            {snapshot.status === 'online' ? (
+              <button
+                className="connection-settings-toggle"
+                type="button"
+                aria-expanded={showSettings}
+                onClick={() => {
+                  setPortDraft(null);
+                  setSettingsFeedback(null);
+                  setShowSettings(!showSettings);
+                }}
+              >
+                Connection settings
+              </button>
+            ) : (
+              <p>Renderer active</p>
+            )}
           </div>
         </article>
         <article className="system-item">

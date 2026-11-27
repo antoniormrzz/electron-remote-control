@@ -56,9 +56,11 @@ For tagged builds, GitHub Actions creates a draft release only after all build a
 
 ## Connecting from a Phone
 
-Connect the phone and desktop to the same local network, then scan the QR code shown in the running desktop app. If the browser shows **Forbidden**, open the full, current QR link directly in Safari or Chrome instead of a scanner preview. Older links stop working after Electremote restarts, and the browser needs to accept the session cookie to load the controls.
+Connect the phone and desktop to the same local network, then scan the current QR code shown in the desktop app. It pairs one new browser and redirects to the bookmarkable address. If pairing fails in a scanner preview, open the current pairing link directly in Safari or Chrome. The browser needs to accept the pairing cookie.
 
-Use Electremote on a trusted local network. The QR link grants control to anyone who has it, and the connection uses local HTTP. Don't forward the app's port to the internet.
+Electremote saves its port and paired browsers across restarts. If the port is occupied, the desktop reports the conflict instead of choosing another port. Use **Connection settings** to change it or reset all pairings. Pairings expire after one year or if you clear the browser's site data. A change to the computer's IP address still requires a new bookmark and QR scan.
+
+Use Electremote on a trusted local network. Anyone with an unused pairing link can pair, and the connection uses local HTTP. Don't forward the app's port to the internet.
 
 ## Unsigned Build Warnings
 

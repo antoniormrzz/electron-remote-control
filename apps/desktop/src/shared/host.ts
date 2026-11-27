@@ -4,6 +4,10 @@ export function isControlMode(value: unknown): value is ControlMode {
   return value === 'keyboard' || value === 'media-keys';
 }
 
+export function isHostPort(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 1024 && value <= 65535;
+}
+
 export interface NetworkInterfaceCandidate {
   id: string;
   name: string;
@@ -20,6 +24,7 @@ export interface OnlineHostSnapshot {
   interfaces: readonly NetworkInterfaceCandidate[];
   selectedInterfaceId: string;
   url: string;
+  pairingUrl: string;
   port: number;
   connectionCount: number;
   localOnly: boolean;
@@ -33,6 +38,7 @@ export interface OnlineHostSnapshot {
 export interface ErrorHostSnapshot {
   status: 'error';
   message: string;
+  port?: number;
 }
 
 export type HostSnapshot = StartingHostSnapshot | OnlineHostSnapshot | ErrorHostSnapshot;
@@ -46,7 +52,10 @@ export interface ElectremoteApi {
   setPointerEnabled(enabled: boolean): Promise<HostSnapshot>;
   setKeyboardEnabled(enabled: boolean): Promise<HostSnapshot>;
   setClipboardEnabled(enabled: boolean): Promise<HostSnapshot>;
+  changePort(port: number): Promise<HostSnapshot>;
+  resetPairedDevices(): Promise<HostSnapshot>;
   copyHostUrl(): Promise<boolean>;
+  copyPairingUrl(): Promise<boolean>;
 }
 
 export const HOST_IPC_CHANNELS = {
@@ -58,5 +67,8 @@ export const HOST_IPC_CHANNELS = {
   setPointerEnabled: 'host:set-pointer-enabled',
   setKeyboardEnabled: 'host:set-keyboard-enabled',
   setClipboardEnabled: 'host:set-clipboard-enabled',
+  changePort: 'host:change-port',
+  resetPairedDevices: 'host:reset-paired-devices',
+  copyPairingUrl: 'host:copy-pairing-url',
   snapshotChanged: 'host:snapshot-changed',
 } as const;

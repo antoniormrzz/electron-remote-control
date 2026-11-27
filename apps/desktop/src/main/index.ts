@@ -10,8 +10,9 @@ import {
   screen,
   Tray,
 } from 'electron';
-import { HOST_IPC_CHANNELS, isControlMode } from '../shared/host';
+import { HOST_IPC_CHANNELS, isControlMode, isHostPort } from '../shared/host';
 import { HostServer } from './host-server';
+import { HostSettingsStore } from './host-settings';
 import { MediaController } from './media-controller';
 
 let mainWindow: BrowserWindow | null = null;
@@ -89,6 +90,27 @@ function registerHostIpc(): void {
 
     await clipboard.writeText(snapshot.url);
     return true;
+  });
+  ipcMain.handle(HOST_IPC_CHANNELS.copyPairingUrl, async () => {
+    const snapshot = hostServer?.getSnapshot();
+    if (snapshot?.status !== 'online') {
+      return false;
+    }
+
+    await clipboard.writeText(snapshot.pairingUrl);
+    return true;
+  });
+  ipcMain.handle(HOST_IPC_CHANNELS.changePort, (_event, port: unknown) => {
+    if (!isHostPort(port) || !hostServer) {
+      throw new Error('Enter a port between 1024 and 65535.');
+    }
+    return hostServer.changePort(port);
+  });
+  ipcMain.handle(HOST_IPC_CHANNELS.resetPairedDevices, () => {
+    if (!hostServer) {
+      throw new Error('The host is unavailable.');
+    }
+    return hostServer.resetPairedDevices();
   });
 }
 
@@ -229,7 +251,10 @@ if (hasSingleInstanceLock) {
   void app.whenReady().then(() => {
     const mediaController = new MediaController(getPackagedRobotBinaryPath());
     mediaController.initialize();
-    hostServer = new HostServer(getRemoteAssetsPath(), mediaController, clipboard);
+    const hostSettings = new HostSettingsStore(
+      path.join(app.getPath('userData'), 'host-settings.json'),
+    );
+    hostServer = new HostServer(getRemoteAssetsPath(), mediaController, clipboard, hostSettings);
     hostServer.subscribe((snapshot) => {
       broadcastHostSnapshot();
       if (snapshot.status === 'error') {

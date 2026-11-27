@@ -181,6 +181,44 @@ h1 {
   margin-top: 8px;
 }
 
+.url-row {
+  grid-template-columns: minmax(0, 1fr) repeat(2, 42px);
+}
+
+.connection-settings {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.connection-settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.connection-settings input {
+  width: 7rem;
+  padding: 6px 8px;
+  border: 1px solid #76796f;
+  border-radius: 4px;
+  color: inherit;
+  background: #22241f;
+  font: inherit;
+}
+
+.connection-settings-toggle {
+  padding: 0;
+  border: 0;
+  color: #dcebdc;
+  background: none;
+  font-size: 0.82rem;
+  text-align: left;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .url-row code,
 .adapter-row select,
 .control-mode-select {
@@ -352,7 +390,7 @@ h1 {
 
 @media (max-height: 680px) {
   .desktop-shell {
-    padding-block: 12px;
+    padding-block: 10px;
   }
 
   .app-header {
@@ -403,7 +441,7 @@ h1 {
   }
 
   .desktop-shell--permission {
-    padding-block: 8px;
+    padding-block: 6px;
   }
 
   .desktop-shell--permission .app-header {

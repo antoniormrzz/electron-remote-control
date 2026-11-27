@@ -12,6 +12,8 @@ Download the package for your computer from [GitHub Releases](https://github.com
 
 Open Electremote on your computer. Connect your phone to the same local network and scan the QR code in the desktop window. The controls open in your phone's browser; no account or mobile app is required. See the [distribution guide](docs/DISTRIBUTION.md) for checksums, unsigned build warnings, and pairing help.
 
+After pairing, bookmark the address in your phone's browser. Electremote saves the port and remembers paired browsers across restarts. If the computer's IP address changes, scan the new QR code. Use **Connection settings** on the desktop to change the port or disconnect all paired browsers.
+
 ## Keep Electremote Running
 
 - **macOS:** Closing the window keeps the remote active. Click the Dock icon to reopen the window, or choose **Quit** from the Dock menu to stop the remote.
@@ -82,7 +84,7 @@ Run the Electron desktop application:
 pnpm dev
 ```
 
-This builds and watches the remote interface, starts Electron, and serves the remote on a random local-network port. Remote interface changes require a browser refresh.
+This builds and watches the remote interface, starts Electron, and serves the remote on the saved local-network port, choosing an available one on first launch. Remote interface changes require a browser refresh.
 
 Run the standalone remote interface:
 

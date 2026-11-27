@@ -17,6 +17,7 @@ import { WebSocket, WebSocketServer } from 'ws';
 import type { ControlMode, HostSnapshot, OnlineHostSnapshot } from '../shared/host';
 import { createClipboardRouter } from './clipboard-router';
 import type { TextClipboard } from './clipboard-router';
+import type { HostSettingsStore } from './host-settings';
 import type { MediaController } from './media-controller';
 import { listNetworkInterfaces, selectPreferredInterface } from './network-interfaces';
 
@@ -57,7 +58,7 @@ function hasSameOrigin(origin: string | undefined, host: string | undefined): bo
 }
 
 export class HostServer {
-  private readonly token = randomBytes(24).toString('base64url');
+  private pairingToken = randomBytes(24).toString('base64url');
   private readonly listeners = new Set<SnapshotListener>();
   private readonly socketHealth = new Map<WebSocket, boolean>();
   private interfaces = listNetworkInterfaces();
@@ -68,6 +69,9 @@ export class HostServer {
   private heartbeat: ReturnType<typeof setInterval> | null = null;
   private permissionRecheck: ReturnType<typeof setInterval> | null = null;
   private startPromise: Promise<HostSnapshot> | null = null;
+  private stopPromise: Promise<void> | null = null;
+  private changingPort = false;
+  private shuttingDown = false;
   private pointerEnabled = false;
   private keyboardEnabled = false;
   private clipboardEnabled = false;
@@ -79,6 +83,7 @@ export class HostServer {
     private readonly remoteAssetsPath: string,
     private readonly mediaController: MediaController,
     private readonly clipboard: TextClipboard,
+    private readonly settings: HostSettingsStore,
   ) {}
 
   public getSnapshot(): HostSnapshot {
@@ -95,8 +100,46 @@ export class HostServer {
       return this.startPromise;
     }
 
-    this.startPromise = this.startInternal();
+    this.startPromise = this.startInternal().catch((error: unknown) => {
+      console.error('Unable to start Electremote with the saved host settings.', error);
+      return this.publish({
+        status: 'error',
+        message: 'Could not load or save the local host settings.',
+      });
+    });
     return this.startPromise;
+  }
+
+  public async changePort(port: number): Promise<HostSnapshot> {
+    if (this.changingPort || this.shuttingDown) {
+      throw new Error('The host is already restarting or quitting.');
+    }
+
+    this.changingPort = true;
+    try {
+      await this.startPromise;
+      if (this.shuttingDown || (this.server?.listening && this.settings.port === port)) {
+        return this.snapshot;
+      }
+      this.settings.setPort(port);
+      this.publish({ status: 'starting' });
+      await this.stopServer();
+      return this.shuttingDown ? this.snapshot : await this.start();
+    } finally {
+      this.changingPort = false;
+    }
+  }
+
+  public resetPairedDevices(): HostSnapshot {
+    this.settings.resetSessions();
+    this.pairingToken = randomBytes(24).toString('base64url');
+    this.clipboardAccessVersion++;
+    this.releasePointerHold(false);
+    for (const socket of this.socketHealth.keys()) {
+      socket.terminate();
+    }
+    this.socketHealth.clear();
+    return this.publishOnlineSnapshot();
   }
 
   public refreshInterfaces(): HostSnapshot {
@@ -158,10 +201,24 @@ export class HostServer {
       : this.snapshot;
   }
 
-  public async stop(): Promise<void> {
+  public stop(): Promise<void> {
+    this.shuttingDown = true;
+    return this.stopServer();
+  }
+
+  private stopServer(): Promise<void> {
+    this.stopPromise ??= this.closeServer().finally(() => {
+      this.stopPromise = null;
+    });
+    return this.stopPromise;
+  }
+
+  private async closeServer(): Promise<void> {
+    await this.startPromise;
     this.pointerEnabled = false;
     this.keyboardEnabled = false;
     this.clipboardEnabled = false;
+    this.clipboardAccessVersion++;
     this.nextKeyboardRequestAt = 0;
     this.releasePointerHold(false);
     this.stopPermissionRecheck();
@@ -184,7 +241,10 @@ export class HostServer {
     this.startPromise = null;
 
     if (server) {
-      await new Promise<void>((resolve) => server.close(() => resolve()));
+      await new Promise<void>((resolve, reject) => {
+        server.close((error) => (error ? reject(error) : resolve()));
+        server.closeAllConnections();
+      });
     }
   }
 
@@ -196,24 +256,62 @@ export class HostServer {
       });
     }
 
+    const port = this.settings.port;
+    this.pairingToken = randomBytes(24).toString('base64url');
     const app = express();
 
     app.get('/', (request, response, next) => {
       const requestToken =
         typeof request.query.token === 'string' ? request.query.token : undefined;
+      const paired = this.settings.acceptsSession(readCookie(request.headers.cookie, COOKIE_NAME));
+      const prefetch = [request.get('Sec-Purpose'), request.get('Purpose')].some((purpose) =>
+        purpose?.includes('prefetch'),
+      );
 
-      if (requestToken === this.token) {
-        response.cookie(COOKIE_NAME, this.token, {
-          httpOnly: true,
-          sameSite: 'lax',
-          path: '/',
-        });
+      response.set('Cache-Control', 'no-store');
+      if (requestToken && !paired && prefetch) {
+        response.sendStatus(403);
+        return;
+      }
+      if (
+        requestToken &&
+        (paired || (request.method === 'GET' && requestToken === this.pairingToken))
+      ) {
+        if (!paired) {
+          let session: ReturnType<HostSettingsStore['createSession']>;
+          try {
+            session = this.settings.createSession();
+          } catch (error) {
+            console.error('Unable to save the pairing.', error);
+            response.status(500).type('text').send('Electremote could not save this pairing.');
+            return;
+          }
+          if (!session) {
+            response
+              .status(409)
+              .type('text')
+              .send('Too many paired devices. Reset them in Electremote.');
+            return;
+          }
+          response.cookie(COOKIE_NAME, session.token, {
+            httpOnly: true,
+            sameSite: 'lax',
+            path: '/',
+            expires: new Date(session.expiresAt),
+          });
+          this.pairingToken = randomBytes(24).toString('base64url');
+          this.publishOnlineSnapshot();
+        }
+        response.set('Referrer-Policy', 'no-referrer');
         response.redirect('/');
         return;
       }
 
-      if (readCookie(request.headers.cookie, COOKIE_NAME) !== this.token) {
-        response.sendStatus(403);
+      if (!paired) {
+        response
+          .status(403)
+          .type('text')
+          .send('Scan the current QR code in Electremote to pair this browser.');
         return;
       }
 
@@ -221,7 +319,7 @@ export class HostServer {
     });
 
     app.use((request, response, next) => {
-      if (readCookie(request.headers.cookie, COOKIE_NAME) !== this.token) {
+      if (!this.settings.acceptsSession(readCookie(request.headers.cookie, COOKIE_NAME))) {
         response.sendStatus(403);
         return;
       }
@@ -235,28 +333,38 @@ export class HostServer {
     app.get('/favicon.ico', (_request, response) => response.sendStatus(204));
     app.use(express.static(this.remoteAssetsPath, { fallthrough: false }));
 
-    return new Promise<HostSnapshot>((resolve) => {
-      const server = app.listen(0, '0.0.0.0');
+    return new Promise<HostSnapshot>((resolve, reject) => {
+      const server = app.listen(port ?? 0, '0.0.0.0');
       this.server = server;
 
-      server.once('error', (error) => {
+      const handleStartupError = (error: Error) => {
         this.server = null;
-        this.startPromise = null;
+        const inUse = port !== null && 'code' in error && error.code === 'EADDRINUSE';
         resolve(
           this.publish({
             status: 'error',
-            message: error instanceof Error ? error.message : 'Unable to start the local server.',
+            ...(port === null ? {} : { port }),
+            message: inUse ? `Port ${port} is already in use. Choose another port.` : error.message,
           }),
         );
-      });
+      };
+      server.once('error', handleStartupError);
 
       server.once('listening', () => {
+        server.removeListener('error', handleStartupError);
+        server.on('error', (error) => console.error('Electremote host server error.', error));
         const address = server.address();
-
-        if (!address || typeof address === 'string') {
-          resolve(
-            this.publish({ status: 'error', message: 'Unable to determine the local port.' }),
-          );
+        try {
+          if (!address || typeof address === 'string') {
+            throw new Error('Unable to determine the local port.');
+          }
+          if (port === null) {
+            this.settings.setPort(address.port);
+          }
+        } catch (error) {
+          this.server = null;
+          server.close(() => reject(error));
+          server.closeAllConnections();
           return;
         }
 
@@ -279,7 +387,9 @@ export class HostServer {
       const origin = request.headers.origin;
       const host = request.headers.host;
       const sameOrigin = hasSameOrigin(origin, host);
-      const authorized = readCookie(request.headers.cookie, COOKIE_NAME) === this.token;
+      const authorized = this.settings.acceptsSession(
+        readCookie(request.headers.cookie, COOKIE_NAME),
+      );
 
       if (!sameOrigin || !authorized) {
         rejectUpgrade(socket, '403 Forbidden');
@@ -291,7 +401,8 @@ export class HostServer {
       });
     });
 
-    webSocketServer.on('connection', (socket) => {
+    webSocketServer.on('connection', (socket, request) => {
+      const sessionToken = readCookie(request.headers.cookie, COOKIE_NAME);
       this.socketHealth.set(socket, true);
       let pointerWindowStartedAt = performance.now();
       let pointerMessages = 0;
@@ -301,6 +412,10 @@ export class HostServer {
       });
       socket.on('pong', () => this.socketHealth.set(socket, true));
       socket.on('message', (data, isBinary) => {
+        if (!this.settings.acceptsSession(sessionToken)) {
+          socket.close(1008, 'Pairing expired or revoked.');
+          return;
+        }
         if (isBinary) {
           socket.close(1008, 'Invalid control message.');
           return;
@@ -497,11 +612,13 @@ export class HostServer {
       this.stopPermissionRecheck();
     }
 
+    const url = `http://${this.selectedInterface.address}:${address.port}/`;
     const snapshot: OnlineHostSnapshot = {
       status: 'online',
       interfaces: this.interfaces,
       selectedInterfaceId: this.selectedInterface.id,
-      url: `http://${this.selectedInterface.address}:${address.port}/?token=${this.token}`,
+      url,
+      pairingUrl: `${url}?token=${this.pairingToken}`,
       port: address.port,
       connectionCount: this.socketHealth.size,
       localOnly: this.selectedInterface.localOnly,
