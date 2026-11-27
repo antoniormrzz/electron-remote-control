@@ -1,12 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
-import { isControlResult } from '@electremote/protocol';
-import type { ControlCommand, ControlRequest } from '@electremote/protocol';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { isControlResult, isPointerStatus } from '@electremote/protocol';
+import type { ControlCommand, ControlRequest, PointerRequest } from '@electremote/protocol';
 
 export type HostConnectionState = 'connecting' | 'connected' | 'reconnecting' | 'unavailable';
 
 const RECONNECT_DELAY_MS = 2_000;
 const UNAVAILABLE_AFTER_ATTEMPTS = 3;
 const ACKNOWLEDGEMENT_TIMEOUT_MS = 3_000;
+const MAX_POINTER_BUFFER_BYTES = 1_024;
 
 interface PendingRequest {
   command: ControlCommand;
@@ -16,7 +17,10 @@ interface PendingRequest {
 export interface HostConnection {
   state: HostConnectionState;
   pendingCommands: ReadonlySet<ControlCommand>;
+  pointerEnabled: boolean;
+  pointerHolding: boolean;
   sendControl(command: ControlCommand): void;
+  sendPointer(request: PointerRequest): void;
 }
 
 function getWebSocketUrl(): string {
@@ -31,6 +35,9 @@ export function useHostConnection(): HostConnection {
     () => new Set(),
   );
   const socketRef = useRef<WebSocket | null>(null);
+  const [pointerEnabled, setPointerEnabled] = useState(false);
+  const [pointerHolding, setPointerHolding] = useState(false);
+  const pointerEnabledRef = useRef(false);
   const pendingRequestsRef = useRef(new Map<string, PendingRequest>());
   const requestSequenceRef = useRef(0);
 
@@ -67,6 +74,9 @@ export function useHostConnection(): HostConnection {
         }
         pendingRequests.clear();
         setPendingCommands(new Set());
+        pointerEnabledRef.current = false;
+        setPointerEnabled(false);
+        setPointerHolding(false);
 
         attempts += 1;
         setState(attempts >= UNAVAILABLE_AFTER_ATTEMPTS ? 'unavailable' : 'reconnecting');
@@ -74,7 +84,7 @@ export function useHostConnection(): HostConnection {
       });
 
       socket.addEventListener('message', (event) => {
-        if (typeof event.data !== 'string') {
+        if (!active || typeof event.data !== 'string') {
           return;
         }
 
@@ -82,6 +92,13 @@ export function useHostConnection(): HostConnection {
         try {
           value = JSON.parse(event.data);
         } catch {
+          return;
+        }
+
+        if (isPointerStatus(value)) {
+          pointerEnabledRef.current = value.enabled;
+          setPointerEnabled(value.enabled);
+          setPointerHolding(value.holding);
           return;
         }
 
@@ -119,6 +136,7 @@ export function useHostConnection(): HostConnection {
         window.clearTimeout(request.timeout);
       }
       pendingRequests.clear();
+      pointerEnabledRef.current = false;
       socket?.close();
       socketRef.current = null;
     };
@@ -161,5 +179,19 @@ export function useHostConnection(): HostConnection {
     socket.send(JSON.stringify(request));
   }
 
-  return { state, pendingCommands, sendControl };
+  const sendPointer = useCallback((request: PointerRequest): void => {
+    const socket = socketRef.current;
+    if (!pointerEnabledRef.current || !socket || socket.readyState !== WebSocket.OPEN) {
+      return;
+    }
+
+    const isRelease = request.type === 'pointer-hold' && request.action === 'release';
+    if (!isRelease && socket.bufferedAmount > MAX_POINTER_BUFFER_BYTES) {
+      return;
+    }
+
+    socket.send(JSON.stringify(request));
+  }, []);
+
+  return { state, pendingCommands, pointerEnabled, pointerHolding, sendControl, sendPointer };
 }

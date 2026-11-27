@@ -27,6 +27,10 @@ Open Electremote on your computer. Connect your phone to the same local network 
 
 Choose **Control mode** in the desktop app. **Keyboard shortcuts** sends Space and arrow keys to the focused app. **System media keys** sends play/pause, system volume, and previous/next track to the operating system. The phone buttons stay the same, but in media-key mode Rewind and Fast-forward skip between tracks rather than seek. The OS decides which player handles those keys. Keyboard shortcuts are the default when Electremote starts.
 
+To use your phone as a mouse, turn on **Phone touchpad** in the desktop app, then choose **Open touchpad** on the phone. Slide to move, tap to click, and use the side strip to scroll. This is off each time Electremote starts. While it's on, any device paired with the current QR link can move and click the mouse, so keep the link private and turn the touchpad off when you're done.
+
+Use **Right click** and **Middle click** for those buttons. Tap **Hold left**, slide on the pad to drag, then tap **Release left**. The hold also releases when you leave the touchpad, disconnect, or turn it off on the desktop.
+
 ## Architecture
 
 - **Electron** provides the desktop application and platform integration.

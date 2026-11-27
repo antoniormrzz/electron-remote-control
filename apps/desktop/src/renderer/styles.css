@@ -93,6 +93,41 @@ h1 {
   letter-spacing: 0;
 }
 
+.host-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.pointer-toggle {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid #76796f;
+  border-radius: 4px;
+  color: #f4f2ea;
+  background: #2b2e28;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.pointer-toggle[aria-pressed='true'] {
+  border-color: #b78943;
+  color: #fff0d3;
+  background: #332617;
+}
+
+.pointer-toggle:disabled {
+  opacity: 0.6;
+}
+
+.pointer-toggle:not(:disabled) {
+  cursor: pointer;
+}
+
 .status-indicator {
   display: inline-flex;
   min-height: 38px;

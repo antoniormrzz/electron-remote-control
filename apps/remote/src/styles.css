@@ -98,6 +98,87 @@ h1 {
   animation: spin 0.9s linear infinite;
 }
 
+.remote-views {
+  display: grid;
+}
+
+.remote-views--switchable {
+  grid-template-rows: auto 1fr;
+}
+
+.view-button {
+  width: fit-content;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid #171814;
+  border-radius: 4px;
+  color: #171814;
+  background: #fffef9;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.view-switch {
+  align-self: start;
+  margin-top: 16px;
+}
+
+.touchpad {
+  display: grid;
+  grid-template-rows: auto minmax(200px, 1fr) auto;
+  gap: 12px;
+  padding-top: 16px;
+}
+
+.touchpad p {
+  margin: 0;
+}
+
+.touchpad-surfaces {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px;
+  gap: 8px;
+}
+
+.touchpad-surface {
+  display: grid;
+  place-items: center;
+  border: 2px solid #171814;
+  border-radius: 6px;
+  color: #f8f6ef;
+  background: #1d4035;
+  font-weight: 700;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.touchpad-scroll {
+  color: #171814;
+  background: #fffef9;
+}
+
+.touchpad-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.touchpad-actions .view-button {
+  width: 100%;
+  padding: 8px;
+}
+
+.touchpad-actions .view-button[aria-pressed='true'] {
+  color: #f8f6ef;
+  background: #1d4035;
+}
+
+.touchpad-actions .view-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .control-pad {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

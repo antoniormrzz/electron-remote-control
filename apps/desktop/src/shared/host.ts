@@ -25,6 +25,7 @@ export interface OnlineHostSnapshot {
   localOnly: boolean;
   controlMode: ControlMode;
   controlStatus: 'ready' | 'permission-required' | 'unavailable';
+  pointerEnabled: boolean;
 }
 
 export interface ErrorHostSnapshot {
@@ -40,6 +41,7 @@ export interface ElectremoteApi {
   refreshNetworkInterfaces(): Promise<HostSnapshot>;
   selectNetworkInterface(id: string): Promise<HostSnapshot>;
   selectControlMode(mode: ControlMode): Promise<HostSnapshot>;
+  setPointerEnabled(enabled: boolean): Promise<HostSnapshot>;
   copyHostUrl(): Promise<boolean>;
 }
 
@@ -49,5 +51,6 @@ export const HOST_IPC_CHANNELS = {
   refreshInterfaces: 'host:refresh-interfaces',
   selectInterface: 'host:select-interface',
   selectControlMode: 'host:select-control-mode',
+  setPointerEnabled: 'host:set-pointer-enabled',
   snapshotChanged: 'host:snapshot-changed',
 } as const;

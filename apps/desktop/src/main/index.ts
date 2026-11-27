@@ -60,6 +60,13 @@ function registerHostIpc(): void {
 
     return hostServer.selectControlMode(mode);
   });
+  ipcMain.handle(HOST_IPC_CHANNELS.setPointerEnabled, (_event, enabled: unknown) => {
+    if (typeof enabled !== 'boolean' || !hostServer) {
+      throw new Error('Invalid phone touchpad setting.');
+    }
+
+    return hostServer.setPointerEnabled(enabled);
+  });
   ipcMain.handle(HOST_IPC_CHANNELS.copyUrl, () => {
     const snapshot = hostServer?.getSnapshot();
     if (snapshot?.status !== 'online') {

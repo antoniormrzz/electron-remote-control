@@ -2,8 +2,8 @@ import { randomBytes } from 'node:crypto';
 import fs from 'node:fs';
 import type { Server } from 'node:http';
 import path from 'node:path';
-import { isControlRequest } from '@electremote/protocol';
-import type { ControlResult } from '@electremote/protocol';
+import { isControlRequest, isPointerRequest } from '@electremote/protocol';
+import type { ControlResult, PointerRequest, PointerStatus } from '@electremote/protocol';
 import express from 'express';
 import { WebSocket, WebSocketServer } from 'ws';
 import type { ControlMode, HostSnapshot, OnlineHostSnapshot } from '../shared/host';
@@ -13,6 +13,8 @@ import { listNetworkInterfaces, selectPreferredInterface } from './network-inter
 const COOKIE_NAME = 'electremote_session';
 const HEARTBEAT_INTERVAL_MS = 30_000;
 const PERMISSION_RECHECK_INTERVAL_MS = 1_000;
+const MAX_POINTER_MESSAGES_PER_SECOND = 60;
+const POINTER_HOLD_TIMEOUT_MS = 3_000;
 
 type SnapshotListener = (snapshot: HostSnapshot) => void;
 
@@ -55,6 +57,8 @@ export class HostServer {
   private heartbeat: ReturnType<typeof setInterval> | null = null;
   private permissionRecheck: ReturnType<typeof setInterval> | null = null;
   private startPromise: Promise<HostSnapshot> | null = null;
+  private pointerEnabled = false;
+  private pointerHold: { socket: WebSocket; timeout: ReturnType<typeof setTimeout> } | null = null;
 
   public constructor(
     private readonly remoteAssetsPath: string,
@@ -101,6 +105,16 @@ export class HostServer {
     return this.publishOnlineSnapshot();
   }
 
+  public setPointerEnabled(enabled: boolean): HostSnapshot {
+    if (enabled && (!this.server?.listening || this.mediaController.refreshStatus() !== 'ready')) {
+      this.publishOnlineSnapshot();
+      throw new Error('Device control must be ready before enabling the phone touchpad.');
+    }
+
+    this.pointerEnabled = enabled;
+    return this.publishOnlineSnapshot();
+  }
+
   public refreshControlStatus(): HostSnapshot {
     const status = this.mediaController.refreshStatus();
     return this.snapshot.status === 'online' && this.snapshot.controlStatus !== status
@@ -109,6 +123,8 @@ export class HostServer {
   }
 
   public async stop(): Promise<void> {
+    this.pointerEnabled = false;
+    this.releasePointerHold(false);
     this.stopPermissionRecheck();
 
     if (this.heartbeat) {
@@ -233,7 +249,8 @@ export class HostServer {
 
     webSocketServer.on('connection', (socket) => {
       this.socketHealth.set(socket, true);
-      this.publishOnlineSnapshot();
+      let pointerWindowStartedAt = performance.now();
+      let pointerMessages = 0;
 
       socket.on('error', (error) => {
         console.error('Remote WebSocket failed:', error.message);
@@ -250,6 +267,38 @@ export class HostServer {
           value = JSON.parse(data.toString());
         } catch {
           socket.close(1008, 'Invalid control message.');
+          return;
+        }
+
+        if (isPointerRequest(value)) {
+          if (value.type === 'pointer-hold' && value.action === 'release') {
+            if (this.pointerHold?.socket === socket) {
+              this.releasePointerHold();
+              this.publishOnlineSnapshot();
+            }
+            return;
+          }
+
+          if (!this.pointerEnabled) {
+            // Revoking permission takes effect even for gestures already in flight.
+            return;
+          }
+
+          const now = performance.now();
+          if (now - pointerWindowStartedAt >= 1_000) {
+            pointerWindowStartedAt = now;
+            pointerMessages = 0;
+          }
+          if (++pointerMessages > MAX_POINTER_MESSAGES_PER_SECOND) {
+            if (this.pointerHold?.socket === socket) {
+              this.releasePointerHold();
+              this.publishOnlineSnapshot();
+            }
+            socket.close(1008, 'Too many pointer messages.');
+            return;
+          }
+
+          this.executePointer(socket, value);
           return;
         }
 
@@ -272,8 +321,13 @@ export class HostServer {
       });
       socket.on('close', () => {
         this.socketHealth.delete(socket);
+        if (this.pointerHold?.socket === socket) {
+          this.releasePointerHold();
+        }
         this.publishOnlineSnapshot();
       });
+      this.publishOnlineSnapshot();
+      this.sendPointerStatus(socket);
     });
 
     this.heartbeat = setInterval(() => {
@@ -290,6 +344,57 @@ export class HostServer {
     this.heartbeat.unref();
   }
 
+  private executePointer(socket: WebSocket, request: PointerRequest): void {
+    const hold = this.pointerHold;
+    if (hold && hold.socket !== socket) {
+      return;
+    }
+
+    if (request.type === 'pointer-hold') {
+      if (hold) {
+        this.refreshControlStatus();
+        this.pointerHold?.timeout.refresh();
+      } else if (request.action === 'start') {
+        if (!this.mediaController.setPointerHold(true)) {
+          this.setPointerEnabled(false);
+          return;
+        }
+        const timeout = setTimeout(() => {
+          this.releasePointerHold();
+          this.publishOnlineSnapshot();
+        }, POINTER_HOLD_TIMEOUT_MS);
+        timeout.unref();
+        this.pointerHold = { socket, timeout };
+        this.sendPointerStatus(socket);
+      }
+      return;
+    }
+
+    if (hold && request.type === 'pointer-click') {
+      return;
+    }
+
+    if (!this.mediaController.executePointer(request, hold !== null)) {
+      this.setPointerEnabled(false);
+    }
+  }
+
+  private releasePointerHold(notify = true): void {
+    const hold = this.pointerHold;
+    if (!hold) {
+      return;
+    }
+
+    clearTimeout(hold.timeout);
+    this.pointerHold = null;
+    if (!this.mediaController.setPointerHold(false)) {
+      this.pointerEnabled = false;
+    }
+    if (notify) {
+      this.sendPointerStatus(hold.socket);
+    }
+  }
+
   private publishOnlineSnapshot(): HostSnapshot {
     if (!this.server?.listening) {
       return this.snapshot;
@@ -300,7 +405,14 @@ export class HostServer {
       return this.snapshot;
     }
 
-    const controlStatus = this.mediaController.getStatus();
+    let controlStatus = this.mediaController.getStatus();
+    if (controlStatus !== 'ready') {
+      this.pointerEnabled = false;
+    }
+    if (!this.pointerEnabled && this.pointerHold) {
+      this.releasePointerHold(false);
+      controlStatus = this.mediaController.getStatus();
+    }
     if (controlStatus === 'permission-required') {
       if (!this.permissionRecheck) {
         this.permissionRecheck = setInterval(
@@ -323,8 +435,28 @@ export class HostServer {
       localOnly: this.selectedInterface.localOnly,
       controlMode: this.mediaController.getControlMode(),
       controlStatus,
+      pointerEnabled: this.pointerEnabled,
     };
+    if (
+      this.snapshot.status === 'online' &&
+      this.snapshot.pointerEnabled !== snapshot.pointerEnabled
+    ) {
+      for (const socket of this.socketHealth.keys()) {
+        this.sendPointerStatus(socket);
+      }
+    }
     return this.publish(snapshot);
+  }
+
+  private sendPointerStatus(socket: WebSocket): void {
+    if (socket.readyState === WebSocket.OPEN) {
+      const status: PointerStatus = {
+        type: 'pointer-status',
+        enabled: this.pointerEnabled,
+        holding: this.pointerHold?.socket === socket,
+      };
+      socket.send(JSON.stringify(status));
+    }
   }
 
   private stopPermissionRecheck(): void {

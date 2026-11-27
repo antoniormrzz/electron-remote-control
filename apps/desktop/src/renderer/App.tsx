@@ -3,6 +3,7 @@ import {
   Check,
   Copy,
   MonitorUp,
+  Mouse,
   RadioTower,
   RefreshCw,
   ShieldAlert,
@@ -25,6 +26,7 @@ export function App() {
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [controlModeError, setControlModeError] = useState(false);
+  const [pointerError, setPointerError] = useState(false);
 
   useEffect(() => {
     const api = window.electremote;
@@ -113,6 +115,23 @@ export function App() {
     }
   }
 
+  async function setPointerEnabled(enabled: boolean): Promise<void> {
+    setBusy(true);
+    setPointerError(false);
+    try {
+      if (!window.electremote) {
+        throw new Error('Desktop controls are unavailable.');
+      }
+
+      setSnapshot(await window.electremote.setPointerEnabled(enabled));
+    } catch (error) {
+      console.error('Unable to change the phone touchpad setting.', error);
+      setPointerError(true);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <main className={needsPermission ? 'desktop-shell desktop-shell--permission' : 'desktop-shell'}>
       <header className="app-header">
@@ -130,13 +149,29 @@ export function App() {
           <p className="section-label">Host status</p>
           <h2 id="host-status-heading">{statusTitle}</h2>
         </div>
-        <span className={`status-indicator status-indicator--${snapshot.status}`}>
-          {snapshot.status === 'online'
-            ? `${snapshot.connectionCount} connected`
-            : snapshot.status === 'error'
-              ? 'Host unavailable'
-              : 'Preparing server'}
-        </span>
+        <div className="host-actions">
+          {snapshot.status === 'online' && (
+            <button
+              className="pointer-toggle"
+              type="button"
+              aria-pressed={snapshot.pointerEnabled}
+              title="Allow paired devices to move, click, and scroll your mouse"
+              disabled={busy || (controlStatus !== 'ready' && !snapshot.pointerEnabled)}
+              onClick={() => void setPointerEnabled(!snapshot.pointerEnabled)}
+            >
+              <Mouse size={16} aria-hidden="true" />
+              Phone touchpad
+              <span aria-hidden="true">: {snapshot.pointerEnabled ? 'On' : 'Off'}</span>
+            </button>
+          )}
+          <span className={`status-indicator status-indicator--${snapshot.status}`}>
+            {snapshot.status === 'online'
+              ? `${snapshot.connectionCount} connected`
+              : snapshot.status === 'error'
+                ? 'Host unavailable'
+                : 'Preparing server'}
+          </span>
+        </div>
       </section>
 
       {snapshot.status === 'online' && (
@@ -218,6 +253,11 @@ export function App() {
               {controlModeError && (
                 <p className="host-note host-note--error" role="alert">
                   Could not change the control mode. Try again.
+                </p>
+              )}
+              {pointerError && (
+                <p className="host-note host-note--error" role="alert">
+                  Could not change the phone touchpad setting. Try again.
                 </p>
               )}
             </div>
