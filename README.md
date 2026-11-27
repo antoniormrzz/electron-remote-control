@@ -14,6 +14,8 @@ Open Electremote on your computer. Connect your phone to the same local network 
 
 After pairing, bookmark the address in your phone's browser. Electremote saves the port and remembers paired browsers across restarts. If the computer's IP address changes, scan the new QR code. Use **Settings** on the desktop to change the port or disconnect all paired browsers.
 
+Electremote listens on the selected network address only. If the saved adapter is unavailable, remote access pauses until you refresh the adapter list or select another adapter.
+
 ## Keep Electremote Running
 
 Open **Settings** in the top-right of the desktop window and turn on **Start at login** to open Electremote automatically when you sign in. On Linux, this requires a desktop environment that supports XDG Autostart. If your TV computer already signs in automatically, Electremote will open when the desktop session starts. It does not run before login.

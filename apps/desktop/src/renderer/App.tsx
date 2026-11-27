@@ -74,7 +74,7 @@ export function App() {
       : snapshot.status === 'error'
         ? 'Error'
         : snapshot.localOnly
-          ? 'Local only'
+          ? 'Offline'
           : 'Online';
 
   const controlStatus = snapshot.status === 'online' ? snapshot.controlStatus : 'unavailable';
@@ -94,8 +94,12 @@ export function App() {
     }
 
     setBusy(true);
+    setAdapterError(false);
     try {
       setSnapshot(await window.electremote.refreshNetworkInterfaces());
+    } catch (error) {
+      console.error('Unable to refresh the network adapters.', error);
+      setAdapterError(true);
     } finally {
       setBusy(false);
     }
@@ -317,7 +321,9 @@ export function App() {
           )}
           <span className={`status-indicator status-indicator--${snapshot.status}`}>
             {snapshot.status === 'online'
-              ? `${snapshot.connectionCount} connected`
+              ? snapshot.localOnly
+                ? 'Network unavailable'
+                : `${snapshot.connectionCount} connected`
               : snapshot.status === 'error'
                 ? 'Host unavailable'
                 : 'Preparing server'}
@@ -328,38 +334,40 @@ export function App() {
       {snapshot.status === 'online' && (
         <section className="host-panel" aria-label="Remote access">
           <div className="host-details">
-            <div>
-              <p className="section-label">Remote address</p>
-              <div className="url-row">
-                <code>{snapshot.url}</code>
-                <button
-                  className="icon-button"
-                  type="button"
-                  title="Copy remote address"
-                  aria-label="Copy remote address"
-                  onClick={() => void copyUrl('address')}
-                >
-                  {copied === 'address' ? (
-                    <Check aria-hidden="true" />
-                  ) : (
-                    <Copy aria-hidden="true" />
-                  )}
-                </button>
-                <button
-                  className="icon-button"
-                  type="button"
-                  title="Copy one-time pairing link"
-                  aria-label="Copy one-time pairing link"
-                  onClick={() => void copyUrl('pairing')}
-                >
-                  {copied === 'pairing' ? (
-                    <Check aria-hidden="true" />
-                  ) : (
-                    <Link aria-hidden="true" />
-                  )}
-                </button>
+            {!snapshot.localOnly && (
+              <div>
+                <p className="section-label">Remote address</p>
+                <div className="url-row">
+                  <code>{snapshot.url}</code>
+                  <button
+                    className="icon-button"
+                    type="button"
+                    title="Copy remote address"
+                    aria-label="Copy remote address"
+                    onClick={() => void copyUrl('address')}
+                  >
+                    {copied === 'address' ? (
+                      <Check aria-hidden="true" />
+                    ) : (
+                      <Copy aria-hidden="true" />
+                    )}
+                  </button>
+                  <button
+                    className="icon-button"
+                    type="button"
+                    title="Copy one-time pairing link"
+                    aria-label="Copy one-time pairing link"
+                    onClick={() => void copyUrl('pairing')}
+                  >
+                    {copied === 'pairing' ? (
+                      <Check aria-hidden="true" />
+                    ) : (
+                      <Link aria-hidden="true" />
+                    )}
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="host-options">
               <div>
@@ -369,10 +377,17 @@ export function App() {
                 <div className="adapter-row">
                   <select
                     id="network-interface"
-                    value={snapshot.selectedInterfaceId}
-                    disabled={busy}
+                    value={snapshot.localOnly ? '' : snapshot.selectedInterfaceId}
+                    disabled={busy || snapshot.interfaces.length === 0}
                     onChange={(event) => void selectInterface(event.target.value)}
                   >
+                    {snapshot.localOnly && (
+                      <option value="" disabled>
+                        {snapshot.interfaces.length > 0
+                          ? 'Choose an adapter'
+                          : 'No adapter available'}
+                      </option>
+                    )}
                     {snapshot.interfaces.map((networkInterface) => (
                       <option key={networkInterface.id} value={networkInterface.id}>
                         {networkInterface.name} · {networkInterface.address}
@@ -412,7 +427,9 @@ export function App() {
             <div className="host-notes">
               <p className="host-note">
                 {snapshot.localOnly
-                  ? 'No LAN adapter is available. This address works only on this computer.'
+                  ? snapshot.interfaces.length > 0
+                    ? 'The saved adapter is unavailable. Choose a network adapter to reconnect.'
+                    : 'Connect this computer to Wi-Fi or Ethernet, then refresh the adapter list.'
                   : 'Scan the code from a device connected to the same network.'}
               </p>
               {snapshot.controlMode === 'media-keys' && (
@@ -441,13 +458,11 @@ export function App() {
             </div>
           </div>
 
-          <div className="qr-panel" aria-label="Remote address QR code">
-            {snapshot.localOnly ? (
-              <RadioTower aria-hidden="true" size={48} strokeWidth={1.5} />
-            ) : (
+          {!snapshot.localOnly && (
+            <div className="qr-panel" aria-label="Remote address QR code">
               <QRCodeCanvas value={snapshot.pairingUrl} size={168} marginSize={2} level="M" />
-            )}
-          </div>
+            </div>
+          )}
         </section>
       )}
 

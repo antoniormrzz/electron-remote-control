@@ -25,11 +25,14 @@ const vite = await createServer({
 after(() => vite.close());
 const { HostServer } = await vite.ssrLoadModule('/src/main/host-server.ts');
 const { HostSettingsStore } = await vite.ssrLoadModule('/src/main/host-settings.ts');
+const { selectPreferredInterface } = await vite.ssrLoadModule('/src/main/network-interfaces.ts');
 
 async function createHostFixture(
   t,
   clipboard = { readText: async () => '', writeText: async () => {} },
+  getInterfaces = () => ({}),
 ) {
+  t.mock.method(os, 'networkInterfaces', getInterfaces);
   const directory = await mkdtemp(path.join(tmpdir(), 'electremote-host-test-'));
   const settingsPath = path.join(directory, 'host-settings.json');
   const hosts = [];
@@ -39,7 +42,7 @@ async function createHostFixture(
   });
   return {
     settingsPath,
-    open(getStatus = () => 'permission-required') {
+    open(getStatus = () => 'permission-required', executeKeyboard = async () => null) {
       let controlMode = 'keyboard';
       const mediaController = {
         getStatus,
@@ -49,6 +52,7 @@ async function createHostFixture(
           controlMode = mode;
         },
         getKeyboardCapabilities: () => ({ primaryModifier: 'control', textSupport: 'ascii' }),
+        executeKeyboard,
       };
       const host = new HostServer(
         fileURLToPath(new URL('../../remote', import.meta.url)),
@@ -62,25 +66,69 @@ async function createHostFixture(
   };
 }
 
-test('restores control mode and prefers the saved adapter even if its address changes', async (t) => {
-  const adapter = (address) => [{ address, family: 'IPv4', internal: false }];
-  let adapters = { en0: adapter('192.168.1.10'), en1: adapter('192.168.1.20') };
-  t.mock.method(os, 'networkInterfaces', () => adapters);
+test('restores control mode after restart', async (t) => {
   const { open } = await createHostFixture(t);
   const first = open();
   assert.equal((await first.start()).controlMode, 'keyboard');
   first.selectControlMode('media-keys');
-  first.selectInterface('en1:192.168.1.20');
   await first.stop();
 
-  adapters = { en0: adapter('192.168.1.10') };
-  const restarted = open();
-  const fallback = await restarted.start();
-  assert.equal(fallback.controlMode, 'media-keys');
-  assert.equal(fallback.selectedInterfaceId, 'en0:192.168.1.10');
+  assert.equal((await open().start()).controlMode, 'media-keys');
+});
 
-  adapters = { ...adapters, en1: adapter('192.168.1.90') };
-  assert.equal(restarted.refreshInterfaces().selectedInterfaceId, 'en1:192.168.1.90');
+test('keeps the saved adapter after an IP change but does not choose another adapter', () => {
+  const preferred = { id: 'wifi:192.0.2.1', name: 'wifi' };
+  const current = { id: 'wifi:192.0.2.2', name: 'wifi', address: '192.0.2.2', localOnly: false };
+  const other = {
+    id: 'ethernet:192.0.2.3',
+    name: 'ethernet',
+    address: '192.0.2.3',
+    localOnly: false,
+  };
+  assert.equal(selectPreferredInterface([other, current], preferred).id, current.id);
+  assert.equal(selectPreferredInterface([other], preferred).address, '127.0.0.1');
+});
+
+test('binds only the selected address, falls back to loopback, and disconnects old sockets', async (t) => {
+  const lan = Object.values(os.networkInterfaces())
+    .flat()
+    .find((address) => address?.family === 'IPv4' && !address.internal);
+  if (!lan) {
+    t.skip('Requires one non-loopback IPv4 address.');
+    return;
+  }
+  const onlineInterfaces = { 'test-lan': [lan] };
+  let interfaces = onlineInterfaces;
+  const { open } = await createHostFixture(t, undefined, () => interfaces);
+  const host = open();
+  const first = await host.start();
+  const address = new URL(first.url);
+  const localAddress = loopback(first.url);
+  assert.equal(address.hostname, lan.address);
+  assert.equal((await fetch(address)).status, 403);
+  await assert.rejects(fetch(localAddress));
+
+  const cookie = await pair(first);
+  const socketUrl = new URL('/ws', address);
+  socketUrl.protocol = 'ws:';
+  const socket = new WebSocket(socketUrl, { headers: { Cookie: cookie, Origin: address.origin } });
+  t.after(() => socket.terminate());
+  await once(socket, 'open');
+
+  const disconnected = once(socket, 'close');
+  interfaces = {};
+  const local = await host.refreshInterfaces();
+  await disconnected;
+  assert.equal(local.url, localAddress.href);
+  assert.deepEqual(local.interfaces, []);
+  assert.equal((await fetch(localAddress)).status, 403);
+  await assert.rejects(fetch(address));
+
+  interfaces = onlineInterfaces;
+  assert.equal((await host.refreshInterfaces()).url, address.href);
+  assert.equal((await fetch(address, { headers: { Cookie: cookie } })).status, 200);
+  await assert.rejects(host.selectInterface('loopback:127.0.0.1'), /no longer available/);
+  assert.equal(host.getSnapshot().url, address.href);
 });
 
 test('remembers each remote access switch without bypassing device-control permission', async (t) => {
@@ -118,6 +166,57 @@ test('remembers each remote access switch without bypassing device-control permi
   assert.equal(last.clipboardEnabled, true);
 });
 
+test('revoking keyboard access interrupts pending typing without blocking host requests', async (t) => {
+  const { open } = await createHostFixture(t);
+  const typing = Promise.withResolvers();
+  const host = open(
+    () => 'ready',
+    (_request, signal) =>
+      new Promise((resolve) => {
+        signal.addEventListener('abort', () => resolve('disabled'), { once: true });
+        typing.resolve();
+      }),
+  );
+  const snapshot = await host.start();
+  host.setKeyboardEnabled(true);
+  const cookie = await pair(snapshot);
+  const address = new URL(snapshot.url);
+  const socketUrl = new URL('/ws', address);
+  socketUrl.protocol = 'ws:';
+  const socket = new WebSocket(socketUrl, { headers: { Cookie: cookie, Origin: address.origin } });
+  t.after(() => socket.terminate());
+  await once(socket, 'open');
+
+  const requests = new Map();
+  socket.on('message', (message) => {
+    const result = JSON.parse(message.toString());
+    requests.get(result.id)?.(result);
+  });
+  function send(request) {
+    return new Promise((resolve) => {
+      requests.set(request.id, resolve);
+      socket.send(JSON.stringify(request));
+    });
+  }
+
+  const pendingText = send({ type: 'keyboard-text', id: 'text', text: 'Some long text.' });
+  await typing.promise;
+  assert.equal((await fetch(address, { headers: { Cookie: cookie } })).status, 200);
+  assert.deepEqual(await send({ type: 'control', id: 'media', command: 'play-pause' }), {
+    type: 'control-result',
+    id: 'media',
+    ok: false,
+    error: 'busy',
+  });
+  host.setKeyboardEnabled(false);
+  assert.deepEqual(await pendingText, {
+    type: 'keyboard-result',
+    id: 'text',
+    ok: false,
+    error: 'disabled',
+  });
+});
+
 function loopback(remoteUrl) {
   const url = new URL(remoteUrl);
   url.hostname = '127.0.0.1';
@@ -125,7 +224,7 @@ function loopback(remoteUrl) {
 }
 
 async function pair(snapshot) {
-  const session = await fetch(loopback(snapshot.pairingUrl), { redirect: 'manual' });
+  const session = await fetch(snapshot.pairingUrl, { redirect: 'manual' });
   assert.equal(session.status, 302);
   assert.equal(session.headers.get('location'), '/');
   const setCookie = session.headers.get('set-cookie');
@@ -198,7 +297,7 @@ test('a port conflict is reported, not silently replaced, and can be retried', a
   const host = open();
   await host.start();
   const occupied = createTcpServer();
-  occupied.listen(0, '0.0.0.0');
+  occupied.listen(0, '127.0.0.1');
   await once(occupied, 'listening');
   try {
     const { port } = occupied.address();

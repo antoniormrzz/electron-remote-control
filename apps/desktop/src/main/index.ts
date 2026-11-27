@@ -85,7 +85,7 @@ function registerHostIpc(): void {
   });
   ipcMain.handle(HOST_IPC_CHANNELS.copyUrl, async () => {
     const snapshot = hostServer?.getSnapshot();
-    if (snapshot?.status !== 'online') {
+    if (snapshot?.status !== 'online' || snapshot.localOnly) {
       return false;
     }
 
@@ -94,7 +94,7 @@ function registerHostIpc(): void {
   });
   ipcMain.handle(HOST_IPC_CHANNELS.copyPairingUrl, async () => {
     const snapshot = hostServer?.getSnapshot();
-    if (snapshot?.status !== 'online') {
+    if (snapshot?.status !== 'online' || snapshot.localOnly) {
       return false;
     }
 

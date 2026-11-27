@@ -1,0 +1,35 @@
+diff --git a/src/installer.js b/src/installer.js
+index d4eb491c48afa6c5f388e89e531bae9f164603b8..6e78dbae4e0e927d4d1c7b4f138df9a76efbf6a3 100644
+--- a/src/installer.js
++++ b/src/installer.js
+@@ -1,13 +1,11 @@
+ 'use strict'
+ 
+-const { promisify } = require('util')
+-
+ const _ = require('lodash')
+ const debug = require('debug')('electron-installer-common:installer')
+ const desktop = require('./desktop')
+ const error = require('./error')
+ const fs = require('fs-extra')
+-const glob = promisify(require('glob'))
++const { glob } = require('glob')
+ const path = require('path')
+ const template = require('./template')
+ const tmp = require('tmp-promise')
+diff --git a/src/readmetadata.js b/src/readmetadata.js
+index da1f0b1968e1b7c9444dcc7e9f66081f4c3344c0..4de471f0068b07be1f965edc5751013d7d48e133 100644
+--- a/src/readmetadata.js
++++ b/src/readmetadata.js
+@@ -1,10 +1,8 @@
+ 'use strict'
+ 
+-const { promisify } = require('util')
+-
+ const asar = require('@electron/asar')
+ const fs = require('fs-extra')
+-const glob = promisify(require('glob'))
++const { glob } = require('glob')
+ const path = require('path')
+ const { wrapError } = require('./error')
+ 

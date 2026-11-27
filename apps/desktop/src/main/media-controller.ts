@@ -1,4 +1,5 @@
 import { createRequire } from 'node:module';
+import { setTimeout as delay } from 'node:timers/promises';
 import { isKeyboardTextSupported } from '@electremote/protocol';
 import type {
   ControlCommand,
@@ -17,6 +18,7 @@ export type ControlExecutionResult = { ok: true } | { ok: false; error: ControlE
 type RobotJs = typeof import('robotjs');
 
 const require = createRequire(__filename);
+const KEYBOARD_CHARACTER_INTERVAL_MS = 5;
 const KEYBOARD_CAPABILITIES: Pick<KeyboardStatus, 'primaryModifier' | 'textSupport'> = {
   primaryModifier: process.platform === 'darwin' ? 'command' : 'control',
   textSupport: process.platform === 'linux' ? 'ascii' : 'bmp',
@@ -167,8 +169,15 @@ export class MediaController {
     return KEYBOARD_CAPABILITIES;
   }
 
-  public executeKeyboard(action: KeyboardAction): KeyboardError | null {
-    if (!this.robot) {
+  public async executeKeyboard(
+    action: KeyboardAction,
+    signal: AbortSignal,
+  ): Promise<KeyboardError | null> {
+    const robot = this.robot;
+    if (signal.aborted) {
+      return 'disabled';
+    }
+    if (!robot) {
       return 'execution-failed';
     }
     if (this.refreshStatus() !== 'ready') {
@@ -180,17 +189,28 @@ export class MediaController {
         if (!isKeyboardTextSupported(action.text, KEYBOARD_CAPABILITIES.textSupport)) {
           return 'unsupported-text';
         }
-        this.robot.typeStringDelayed(action.text, 12_000);
-      } else {
-        const modifiers = [...action.modifiers];
-        const key = action.key ?? modifiers.pop();
-        if (!key) {
-          throw new Error('Missing shortcut key.');
+        for (const character of action.text) {
+          if (signal.aborted) {
+            return 'disabled';
+          }
+          robot.unicodeTap(character.charCodeAt(0));
+          // Keep the native pacing without making RobotJS sleep on Electron's main thread.
+          await delay(KEYBOARD_CHARACTER_INTERVAL_MS, undefined, { signal });
         }
-        this.robot.keyTap(key, modifiers);
+        return this.refreshStatus() === 'ready' ? null : 'permission-required';
       }
+
+      const modifiers = [...action.modifiers];
+      const key = action.key ?? modifiers.pop();
+      if (!key) {
+        throw new Error('Missing shortcut key.');
+      }
+      robot.keyTap(key, modifiers);
       return null;
     } catch (error) {
+      if (signal.aborted) {
+        return 'disabled';
+      }
       console.error('RobotJS failed to send phone keyboard input.', error);
       this.status = 'unavailable';
       return 'execution-failed';

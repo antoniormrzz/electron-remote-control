@@ -14,7 +14,7 @@ export interface ControlRequest {
   command: ControlCommand;
 }
 
-export type ControlError = 'permission-required' | 'execution-failed';
+export type ControlError = 'permission-required' | 'execution-failed' | 'busy';
 
 export type ControlResult =
   | {
@@ -79,7 +79,7 @@ export interface KeyboardStatus {
   primaryModifier: 'control' | 'command';
   textSupport: KeyboardTextSupport;
 }
-export type KeyboardError = ControlError | 'disabled' | 'unsupported-text' | 'busy';
+export type KeyboardError = ControlError | 'disabled' | 'unsupported-text';
 export type KeyboardResult =
   | { type: 'keyboard-result'; id: string; ok: true }
   | { type: 'keyboard-result'; id: string; ok: false; error: KeyboardError };
@@ -118,7 +118,9 @@ export function isControlResult(value: unknown): value is ControlResult {
   return (
     value.ok === true ||
     (value.ok === false &&
-      (value.error === 'permission-required' || value.error === 'execution-failed'))
+      (value.error === 'permission-required' ||
+        value.error === 'execution-failed' ||
+        value.error === 'busy'))
   );
 }
 

@@ -15,6 +15,8 @@ pnpm install
 
 If `pnpm make` exits before Forge prints its progress after upgrading from Forge 7, remove the generated `node_modules` directories at the repo root, in `apps/desktop`, and in `apps/remote`, then run `pnpm install --frozen-lockfile`. An in-place upgrade can leave old nested dependencies behind; keep `pnpm-lock.yaml`.
 
+Run `pnpm audit` after changing the lockfile. The workspace pins patched transitive dependencies where the packaging tools lag. The `appdmg` and `electron-installer-common` patches adapt their older calls to the maintained dependency APIs.
+
 Create an unpacked application for the current operating system and architecture:
 
 ```sh

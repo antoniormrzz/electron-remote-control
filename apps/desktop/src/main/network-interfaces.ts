@@ -5,7 +5,7 @@ export type NetworkInterfacePreference = Pick<NetworkInterfaceCandidate, 'id' | 
 
 const LOOPBACK: NetworkInterfaceCandidate = {
   id: 'loopback:127.0.0.1',
-  name: 'This computer only',
+  name: 'Loopback',
   address: '127.0.0.1',
   localOnly: true,
 };
@@ -48,7 +48,7 @@ export function listNetworkInterfaces(): NetworkInterfaceCandidate[] {
     );
   });
 
-  return uniqueCandidates.length > 0 ? uniqueCandidates : [LOOPBACK];
+  return uniqueCandidates;
 }
 
 export function selectPreferredInterface(
@@ -58,7 +58,6 @@ export function selectPreferredInterface(
   return (
     candidates.find((candidate) => candidate.id === preference?.id) ??
     candidates.find((candidate) => candidate.name === preference?.name) ??
-    candidates[0] ??
-    LOOPBACK
+    (preference ? LOOPBACK : (candidates[0] ?? LOOPBACK))
   );
 }

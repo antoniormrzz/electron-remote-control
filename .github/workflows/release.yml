@@ -119,11 +119,15 @@ jobs:
               if ($app.HasExited) {
                 throw "Electremote exited before serving requests (exit code: $($app.ExitCode))."
               }
-              $listener = Get-NetTCPConnection -State Listen |
-                Where-Object { $_.OwningProcess -eq $app.Id -and $_.LocalAddress -eq '0.0.0.0' } |
+              $listeners = @(Get-NetTCPConnection -State Listen | Where-Object { $_.OwningProcess -eq $app.Id })
+              if ($listeners | Where-Object { $_.LocalAddress -in @('0.0.0.0', '::') }) {
+                throw 'Electremote unexpectedly listened on every network interface.'
+              }
+              $listener = $listeners |
+                Where-Object { $_.LocalAddress -match '^\d{1,3}(\.\d{1,3}){3}$' } |
                 Select-Object -First 1
               if ($listener) {
-                $response = Invoke-WebRequest -Uri "http://127.0.0.1:$($listener.LocalPort)/" -SkipHttpErrorCheck -TimeoutSec 5
+                $response = Invoke-WebRequest -Uri "http://$($listener.LocalAddress):$($listener.LocalPort)/" -NoProxy -SkipHttpErrorCheck -TimeoutSec 5
                 if ($response.StatusCode -ne 403) {
                   throw "Expected the remote page to reject an unauthenticated request, got $($response.StatusCode)."
                 }

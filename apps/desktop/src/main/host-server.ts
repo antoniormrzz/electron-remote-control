@@ -70,7 +70,7 @@ export class HostServer {
   private permissionRecheck: ReturnType<typeof setInterval> | null = null;
   private startPromise: Promise<HostSnapshot> | null = null;
   private stopPromise: Promise<void> | null = null;
-  private changingPort = false;
+  private restarting = false;
   private shuttingDown = false;
   private pointerEnabled = false;
   private keyboardEnabled = false;
@@ -79,6 +79,7 @@ export class HostServer {
   private clipboardEnabled = false;
   private clipboardAccessVersion = 0;
   private nextKeyboardRequestAt = 0;
+  private keyboardTask: { socket: WebSocket; controller: AbortController } | null = null;
   private pointerHold: { socket: WebSocket; timeout: ReturnType<typeof setTimeout> } | null = null;
 
   public constructor(
@@ -112,28 +113,41 @@ export class HostServer {
     return this.startPromise;
   }
 
-  public async changePort(port: number): Promise<HostSnapshot> {
-    if (this.changingPort || this.shuttingDown) {
+  public changePort(port: number): Promise<HostSnapshot> {
+    return this.updateListener(() => {
+      if (this.server?.listening && this.settings.port === port) {
+        return false;
+      }
+      this.settings.setPort(port);
+      return true;
+    });
+  }
+
+  private async updateListener(shouldRestart: () => boolean): Promise<HostSnapshot> {
+    if (this.restarting || this.shuttingDown) {
       throw new Error('The host is already restarting or quitting.');
     }
 
-    this.changingPort = true;
+    this.restarting = true;
     try {
       await this.startPromise;
-      if (this.shuttingDown || (this.server?.listening && this.settings.port === port)) {
+      if (this.shuttingDown) {
         return this.snapshot;
       }
-      this.settings.setPort(port);
+      if (!shouldRestart()) {
+        return this.publishOnlineSnapshot();
+      }
       this.publish({ status: 'starting' });
       await this.stopServer();
       return this.shuttingDown ? this.snapshot : await this.start();
     } finally {
-      this.changingPort = false;
+      this.restarting = false;
     }
   }
 
   public resetPairedDevices(): HostSnapshot {
     this.settings.resetSessions();
+    this.keyboardTask?.controller.abort();
     this.pairingToken = randomBytes(24).toString('base64url');
     this.clipboardAccessVersion++;
     this.releasePointerHold(false);
@@ -144,25 +158,40 @@ export class HostServer {
     return this.publishOnlineSnapshot();
   }
 
-  public refreshInterfaces(): HostSnapshot {
-    this.interfaces = listNetworkInterfaces();
-    this.selectedInterface = selectPreferredInterface(
-      this.interfaces,
-      this.settings.preferredAdapter,
-    );
-    return this.publishOnlineSnapshot();
+  public refreshInterfaces(): Promise<HostSnapshot> {
+    return this.updateListener(() => {
+      this.interfaces = listNetworkInterfaces();
+      return this.selectBindingForCurrentPreference();
+    });
   }
 
-  public selectInterface(id: string): HostSnapshot {
-    const candidate = this.interfaces.find((networkInterface) => networkInterface.id === id);
+  public selectInterface(id: string): Promise<HostSnapshot> {
+    return this.updateListener(() => {
+      this.interfaces = listNetworkInterfaces();
+      const candidate = this.interfaces.find((networkInterface) => networkInterface.id === id);
 
-    if (!candidate) {
-      throw new Error('The selected network interface is no longer available.');
+      if (!candidate) {
+        throw new Error('The selected network interface is no longer available.');
+      }
+
+      this.settings.setPreferredAdapter(candidate);
+      return this.selectBindingForCurrentPreference();
+    });
+  }
+
+  private selectBindingForCurrentPreference(): boolean {
+    const candidate = selectPreferredInterface(this.interfaces, this.settings.preferredAdapter);
+    const boundAddress = this.server?.address();
+    if (
+      !boundAddress ||
+      typeof boundAddress === 'string' ||
+      boundAddress.address !== candidate.address
+    ) {
+      return true;
     }
 
-    this.settings.setPreferredAdapter(candidate);
     this.selectedInterface = candidate;
-    return this.publishOnlineSnapshot();
+    return false;
   }
 
   public selectControlMode(mode: ControlMode): HostSnapshot {
@@ -224,6 +253,7 @@ export class HostServer {
 
   private async closeServer(): Promise<void> {
     await this.startPromise;
+    this.keyboardTask?.controller.abort();
     this.pointerEnabled = false;
     this.keyboardEnabled = false;
     this.clipboardEnabled = false;
@@ -352,7 +382,7 @@ export class HostServer {
     app.use(express.static(this.remoteAssetsPath, { fallthrough: false }));
 
     return new Promise<HostSnapshot>((resolve, reject) => {
-      const server = app.listen(port ?? 0, '0.0.0.0');
+      const server = app.listen(port ?? 0, this.selectedInterface.address);
       this.server = server;
 
       const handleStartupError = (error: Error) => {
@@ -456,7 +486,7 @@ export class HostServer {
             return;
           }
 
-          if (!this.pointerEnabled) {
+          if (!this.pointerEnabled || this.keyboardTask) {
             // Revoking permission takes effect even for gestures already in flight.
             return;
           }
@@ -480,7 +510,16 @@ export class HostServer {
         }
 
         if (isKeyboardRequest(value)) {
-          socket.send(JSON.stringify(this.executeKeyboard(value)));
+          void this.executeKeyboard(value, socket)
+            .then((result) => {
+              if (socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify(result));
+              }
+            })
+            .catch((error: unknown) => {
+              console.error('Could not complete the remote keyboard request.', error);
+              socket.close(1011, 'Keyboard request failed.');
+            });
           return;
         }
 
@@ -489,7 +528,9 @@ export class HostServer {
           return;
         }
 
-        const execution = this.mediaController.execute(value.command);
+        const execution = this.keyboardTask
+          ? ({ ok: false, error: 'busy' } as const)
+          : this.mediaController.execute(value.command);
         const result: ControlResult = execution.ok
           ? { type: 'control-result', id: value.id, ok: true }
           : {
@@ -503,6 +544,9 @@ export class HostServer {
       });
       socket.on('close', () => {
         this.socketHealth.delete(socket);
+        if (this.keyboardTask?.socket === socket) {
+          this.keyboardTask.controller.abort();
+        }
         if (this.pointerHold?.socket === socket) {
           this.releasePointerHold();
         }
@@ -528,17 +572,27 @@ export class HostServer {
     this.heartbeat.unref();
   }
 
-  private executeKeyboard(request: KeyboardRequest): KeyboardResult {
+  private async executeKeyboard(
+    request: KeyboardRequest,
+    socket: WebSocket,
+  ): Promise<KeyboardResult> {
     const result = { type: 'keyboard-result', id: request.id } as const;
     if (!this.keyboardEnabled) {
       return { ...result, ok: false, error: 'disabled' };
     }
-    if (this.pointerHold || performance.now() < this.nextKeyboardRequestAt) {
+    if (this.pointerHold || this.keyboardTask || performance.now() < this.nextKeyboardRequestAt) {
       return { ...result, ok: false, error: 'busy' };
     }
 
-    const error = this.mediaController.executeKeyboard(request);
-    this.nextKeyboardRequestAt = performance.now() + KEYBOARD_COOLDOWN_MS;
+    const controller = new AbortController();
+    this.keyboardTask = { socket, controller };
+    let error: Awaited<ReturnType<MediaController['executeKeyboard']>>;
+    try {
+      error = await this.mediaController.executeKeyboard(request, controller.signal);
+    } finally {
+      this.keyboardTask = null;
+      this.nextKeyboardRequestAt = performance.now() + KEYBOARD_COOLDOWN_MS;
+    }
     if (error === 'execution-failed') {
       this.keyboardBlocked = true;
     }
@@ -624,6 +678,9 @@ export class HostServer {
     }
     this.keyboardEnabled =
       remoteAccess.keyboard && !this.keyboardBlocked && controlStatus === 'ready';
+    if (!this.keyboardEnabled) {
+      this.keyboardTask?.controller.abort();
+    }
     this.clipboardEnabled = remoteAccess.clipboard;
     if (controlStatus === 'permission-required') {
       if (!this.permissionRecheck) {
@@ -637,7 +694,7 @@ export class HostServer {
       this.stopPermissionRecheck();
     }
 
-    const url = `http://${this.selectedInterface.address}:${address.port}/`;
+    const url = `http://${address.address}:${address.port}/`;
     const snapshot: OnlineHostSnapshot = {
       status: 'online',
       interfaces: this.interfaces,
