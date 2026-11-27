@@ -33,11 +33,11 @@ Generated files are written under `apps/desktop/out/`. On macOS, `pnpm make` wri
 
 ## Release Tags
 
-The tag and both package versions must match exactly. For example, version `2.0.0` must use tag `v2.0.0`.
+The tag and both package versions must match exactly. For example, version `2.1.0` must use tag `v2.1.0`.
 
 ```sh
-git tag v2.0.0
-git push origin v2.0.0
+git tag v2.1.0
+git push origin v2.1.0
 ```
 
 A matching tag verifies package versions, builds the packages below, and creates a draft GitHub Release after all builds succeed.
@@ -45,8 +45,8 @@ A matching tag verifies package versions, builds the packages below, and creates
 To opt into publishing after the checks pass and all assets are uploaded, use an annotated tag instead:
 
 ```sh
-git tag -a v2.0.0 -m 'Electremote v2.0.0' -m 'Publish-Release: true'
-git push origin v2.0.0
+git tag -a v2.1.0 -m 'Electremote v2.1.0' -m 'Publish-Release: true'
+git push origin v2.1.0
 ```
 
 ## Test the Build Matrix
@@ -91,6 +91,8 @@ Electremote needs permission to send media-control keystrokes. If the desktop ap
 
 After an update, macOS may still show the old permission entry as enabled even though it no longer matches the new app. If that happens, quit Electremote, remove its old entry from the permission list, add the current copy from Applications, and reopen it. Ad hoc signing cannot carry permissions across different builds.
 
+If **Start at login** stops working or still points at an old copy, remove the old Electremote entry under **System Settings > General > Login Items & Extensions > Open at Login**, then open the current copy from Applications and enable **Settings > Start at login** again.
+
 Frictionless distribution would require a paid Apple Developer Program membership, Developer ID signing, hardened runtime configuration, and notarization. Those are intentionally not configured.
 
 ### Windows
@@ -117,7 +119,7 @@ Each release includes a `SHA256SUMS` file containing the SHA-256 checksums of it
 
 ```sh
 # macOS (replace the filename with the one you downloaded)
-shasum -a 256 Electremote-2.0.0-arm64.dmg
+shasum -a 256 Electremote-2.1.0-arm64.dmg
 ```
 
 ```powershell

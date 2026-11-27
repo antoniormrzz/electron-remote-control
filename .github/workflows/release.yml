@@ -220,7 +220,7 @@ jobs:
             exit 1
           fi
           sha256sum -- "${assets[@]}" > SHA256SUMS
-      - name: Create release notes header
+      - name: Create release warnings and platform notes
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
           RELEASE_TAG: ${{ github.ref_name }}
@@ -229,6 +229,14 @@ jobs:
             printf '%s\n' '> [!WARNING]'
             printf '> The macOS builds are not Developer ID signed or notarized, and the Windows build is not Authenticode signed. See the [installation instructions](https://github.com/%s/blob/%s/docs/DISTRIBUTION.md) for Gatekeeper and SmartScreen warnings.\n' "$GITHUB_REPOSITORY" "$RELEASE_TAG"
             printf '\n'
+            cat <<'EOF'
+          ### Platform notes
+
+          - **Linux (Wayland):** Your desktop may ask whether to allow remote control when Electremote sends input through XWayland. Approve only if you intend to use remote control. Approval does not guarantee mouse movement or keyboard input in native Wayland apps. For clipboard transfers, focus the Electremote desktop window first; the remote-control prompt does not grant background clipboard access.
+          - **macOS control permission after an update:** If Electremote is shown as allowed but controls do not work, quit it, replace it in **Applications**, and eject the DMG. In **System Settings > Privacy & Security > Device Control and Data Access** (or **Accessibility**), remove the stale entry and approve the new copy from Applications. Ad hoc signatures can change between builds even when the app name stays the same.
+          - **macOS stale login item:** If **Start at login** stops working or refers to an old copy, remove the old Electremote entry from **System Settings > General > Login Items & Extensions** under **Open at Login**. Open the current copy from Applications and enable **Settings > Start at login** again.
+
+          EOF
           } > release-notes.md
       - name: Create GitHub Release
         env:

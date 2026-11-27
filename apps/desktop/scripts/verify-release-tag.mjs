@@ -7,7 +7,7 @@ const rootDirectory = path.resolve(desktopDirectory, '../..');
 const tag = process.argv[2] ?? process.env.GITHUB_REF_NAME;
 
 if (!tag?.startsWith('v')) {
-  throw new Error('Provide a release tag such as v2.0.0.');
+  throw new Error('Provide a release tag such as v2.1.0.');
 }
 
 const [rootPackage, desktopPackage] = await Promise.all(
