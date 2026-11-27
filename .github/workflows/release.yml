@@ -19,7 +19,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: 24
+          node-version-file: .nvmrc
       - name: Verify release tag
         if: github.event_name == 'push'
         env:
@@ -56,12 +56,12 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v6
         with:
-          version: 11.25.0
+          version: 12.23.0
           cache: true
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: 24
+          node-version-file: .nvmrc
       - name: Install Linux packaging tools
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install --yes fakeroot rpm
@@ -73,6 +73,8 @@ jobs:
         run: pnpm lint
       - name: Typecheck
         run: pnpm typecheck
+      - name: Test
+        run: pnpm test
       - name: Build
         run: pnpm build
       - name: Make distribution packages
@@ -150,7 +152,25 @@ jobs:
           trap 'rmdir "$mountpoint"' EXIT
           hdiutil attach -readonly -nobrowse -mountpoint "$mountpoint" "$image"
           trap 'hdiutil detach "$mountpoint" && rmdir "$mountpoint"' EXIT
-          test -f "$mountpoint/Electremote.app/Contents/Info.plist"
+          app="$mountpoint/Electremote.app"
+          codesign --verify --deep --strict "$app"
+          ELECTRON_RUN_AS_NODE=1 "$app/Contents/MacOS/Electremote" \
+            -e 'require(process.argv[1])' "$app/Contents/Resources/robotjs/node.napi.node"
+      - name: Verify Linux package contents
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          case "$(node -p 'process.arch')" in
+            x64) deb_arch=amd64; rpm_arch=x86_64 ;;
+            arm64) deb_arch=arm64; rpm_arch=aarch64 ;;
+            *) echo 'Unexpected Linux runner architecture.' >&2; exit 1 ;;
+          esac
+          deb="$(find apps/desktop/out/make/deb -type f -name '*.deb' -print -quit)"
+          rpm="$(find apps/desktop/out/make/rpm -type f -name '*.rpm' -print -quit)"
+          test "$(dpkg-deb -f "$deb" Architecture)" = "$deb_arch"
+          test "$(rpm -qp --qf '%{ARCH}' "$rpm")" = "$rpm_arch"
+          dpkg-deb --fsys-tarfile "$deb" | tar -tf - | grep -E '/resources/robotjs/node\.napi\.node$'
+          rpm -qpl "$rpm" | grep -E '/resources/robotjs/node\.napi\.node$'
       - name: Upload release artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -169,6 +189,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
+        with:
+          fetch-tags: true
       - name: Download release artifacts
         uses: actions/download-artifact@v8
         with:
@@ -201,15 +223,25 @@ jobs:
         run: |
           {
             printf '%s\n' '> [!WARNING]'
-            printf '> These builds are unsigned. macOS Gatekeeper and Windows SmartScreen will display warnings. Review the installation instructions in [docs/DISTRIBUTION.md](https://github.com/%s/blob/%s/docs/DISTRIBUTION.md)\n' "$GITHUB_REPOSITORY" "$RELEASE_TAG"
+            printf '> The macOS builds are not Developer ID signed or notarized, and the Windows build is not Authenticode signed. See the [installation instructions](https://github.com/%s/blob/%s/docs/DISTRIBUTION.md) for Gatekeeper and SmartScreen warnings.\n' "$GITHUB_REPOSITORY" "$RELEASE_TAG"
             printf '\n'
           } > release-notes.md
-      - name: Create draft GitHub Release
+      - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ github.ref_name }}
         shell: bash
         run: |
+          tag_ref="refs/tags/$RELEASE_TAG"
+          tag_type="$(git cat-file -t "$tag_ref")"
+          publish=false
+          if [[ "$tag_type" == tag ]]; then
+            annotation="$(git for-each-ref --format='%(contents)' "$tag_ref")"
+            if grep -Fxq 'Publish-Release: true' <<< "$annotation"; then
+              publish=true
+            fi
+          fi
+
           assets=(release-assets/*)
           gh release create "$RELEASE_TAG" "${assets[@]}" \
             --draft \
@@ -217,3 +249,6 @@ jobs:
             --notes-file release-notes.md \
             --title "Electremote $RELEASE_TAG" \
             --verify-tag
+          if [[ "$publish" == true ]]; then
+            gh release edit "$RELEASE_TAG" --draft=false --latest
+          fi

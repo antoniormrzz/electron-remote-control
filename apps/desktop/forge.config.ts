@@ -1,3 +1,4 @@
+import { rename } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { MakerDeb } from '@electron-forge/maker-deb';
@@ -20,6 +21,15 @@ const config: ForgeConfig = {
     extraResource: ['resources/remote', 'resources/robotjs', 'resources/icon.png'],
     icon: path.join(assetsDirectory, 'icon'),
     name: 'Electremote',
+    osxSign: {
+      identity: '-',
+      identityValidation: false,
+      // Ad hoc signatures have no team ID for hardened runtime library validation.
+      optionsForFile: () => ({ hardenedRuntime: false }),
+      preAutoEntitlements: false,
+      preEmbedProvisioningProfile: false,
+      continueOnError: false,
+    },
     win32metadata: {
       CompanyName: 'Antonio Ramirez',
       FileDescription: 'Electremote desktop media remote control',
@@ -73,6 +83,30 @@ const config: ForgeConfig = {
       ['linux'],
     ),
   ],
+  hooks: {
+    postMake: async (_config, results) => {
+      for (const result of results) {
+        if (result.platform !== 'darwin' || result.maker !== 'dmg') {
+          continue;
+        }
+
+        result.artifacts = await Promise.all(
+          result.artifacts.map(async (artifact) => {
+            // Forge 8 puts DMGs in make/dmg/<arch>; keep the existing versioned output path.
+            const destination = path.resolve(
+              path.dirname(artifact),
+              '..',
+              '..',
+              path.basename(artifact),
+            );
+            await rename(artifact, destination);
+            return destination;
+          }),
+        );
+      }
+      return results;
+    },
+  },
   plugins: [
     new VitePlugin({
       build: [

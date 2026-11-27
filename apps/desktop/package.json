@@ -1,7 +1,7 @@
 {
   "name": "@electremote/desktop",
   "productName": "Electremote",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "description": "Control desktop media playback from another device on the same local network.",
   "author": "Antonio Ramirez",
@@ -11,7 +11,7 @@
     "url": "https://github.com/antoniormrzz/electron-remote-control.git"
   },
   "license": "MIT",
-  "main": ".vite/build/main.js",
+  "main": ".vite/build/main.cjs",
   "scripts": {
     "start": "electron-forge start",
     "dev:host": "electron-forge start",
@@ -27,32 +27,32 @@
   },
   "dependencies": {
     "@electremote/protocol": "workspace:*",
-    "express": "5.2.1",
-    "lucide-react": "1.39.0",
+    "express": "5.3.0",
+    "lucide-react": "1.81.0",
     "qrcode.react": "4.2.0",
-    "react": "19.2.8",
-    "react-dom": "19.2.8",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
     "robotjs": "0.9.1",
-    "ws": "8.21.3"
+    "ws": "8.23.0"
   },
   "devDependencies": {
-    "@electron-forge/cli": "7.11.2",
-    "@electron-forge/maker-deb": "7.11.2",
-    "@electron-forge/maker-dmg": "7.11.2",
-    "@electron-forge/maker-rpm": "7.11.2",
-    "@electron-forge/maker-zip": "7.11.2",
-    "@electron-forge/plugin-vite": "7.11.2",
-    "@electron-forge/shared-types": "7.11.2",
+    "@electron-forge/cli": "8.0.1",
+    "@electron-forge/maker-deb": "8.0.1",
+    "@electron-forge/maker-dmg": "8.0.1",
+    "@electron-forge/maker-rpm": "8.0.1",
+    "@electron-forge/maker-zip": "8.0.1",
+    "@electron-forge/plugin-vite": "8.0.1",
+    "@electron-forge/shared-types": "8.0.1",
     "@shockpkg/icon-encoder": "3.2.3",
     "@types/express": "5.0.6",
-    "@types/node": "24.9.0",
-    "@types/react": "19.2.18",
-    "@types/react-dom": "19.2.5",
-    "@types/ws": "8.18.1",
-    "@vitejs/plugin-react": "6.1.1",
-    "electron": "44.1.1",
-    "node-gyp": "12.2.0",
-    "sharp": "0.35.4",
-    "vite": "8.2.2"
+    "@types/node": "24.19.4",
+    "@types/react": "19.3.3",
+    "@types/react-dom": "19.3.0",
+    "@types/ws": "8.18.2",
+    "@vitejs/plugin-react": "6.3.0",
+    "electron": "45.5.0",
+    "node-gyp": "13.1.0",
+    "sharp": "0.35.5",
+    "vite": "8.4.0"
   }
 }

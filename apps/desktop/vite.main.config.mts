@@ -5,14 +5,14 @@ export default defineConfig({
     emptyOutDir: false,
     lib: {
       entry: 'src/main/index.ts',
-      fileName: () => 'main.js',
+      fileName: () => 'main.cjs',
       formats: ['cjs'],
     },
     outDir: '.vite/build',
     rollupOptions: {
       external: ['electron', 'robotjs', /^node:/],
       output: {
-        entryFileNames: 'main.js',
+        entryFileNames: 'main.cjs',
       },
     },
     ssr: true,

@@ -70,8 +70,10 @@ The previous implementations in `electremote/` and `pwa-remote-control/` are rea
 
 ### Requirements
 
-- Node.js 24
+- Node.js 24.15.0 or newer in the 24.x line (see [`.nvmrc`](.nvmrc) for the version used in CI)
 - Corepack
+
+If you use nvm, run `nvm install` and `nvm use` from the repository root.
 
 Enable the pinned pnpm version and install all workspace dependencies:
 

@@ -1,8 +1,10 @@
 # Distribution
 
-Electremote release artifacts are built from version tags using native GitHub-hosted runners. They are currently unsigned.
+Electremote release artifacts are built from version tags using native GitHub-hosted runners. They are not signed with a distribution certificate.
 
 ## Local Builds
+
+Use the Node.js version pinned in [`.nvmrc`](../.nvmrc). With nvm, run `nvm install` and `nvm use` from the repository root.
 
 Install the repository's required package manager and dependencies:
 
@@ -10,6 +12,8 @@ Install the repository's required package manager and dependencies:
 corepack enable pnpm
 pnpm install
 ```
+
+If `pnpm make` exits before Forge prints its progress after upgrading from Forge 7, remove the generated `node_modules` directories at the repo root, in `apps/desktop`, and in `apps/remote`, then run `pnpm install --frozen-lockfile`. An in-place upgrade can leave old nested dependencies behind; keep `pnpm-lock.yaml`.
 
 Create an unpacked application for the current operating system and architecture:
 
@@ -23,18 +27,25 @@ Create the distribution package for the current operating system and architectur
 pnpm make
 ```
 
-Generated files are written under `apps/desktop/out/`.
+Generated files are written under `apps/desktop/out/`. On macOS, `pnpm make` writes `Electremote-<version>-<architecture>.dmg` directly under `apps/desktop/out/make/`.
 
 ## Release Tags
 
-The tag and both package versions must match exactly. For example, version `1.0.0` must use tag `v1.0.0`.
+The tag and both package versions must match exactly. For example, version `2.0.0` must use tag `v2.0.0`.
 
 ```sh
-git tag v1.0.0
-git push origin v1.0.0
+git tag v2.0.0
+git push origin v2.0.0
 ```
 
 A matching tag verifies package versions, builds the packages below, and creates a draft GitHub Release after all builds succeed.
+
+To opt into publishing after the checks pass and all assets are uploaded, use an annotated tag instead:
+
+```sh
+git tag -a v2.0.0 -m 'Electremote v2.0.0' -m 'Publish-Release: true'
+git push origin v2.0.0
+```
 
 ## Test the Build Matrix
 
@@ -52,7 +63,7 @@ The release artifacts are:
 | Linux    | ARM64        | DEB and RPM                           |
 | Linux    | x64          | DEB and RPM                           |
 
-For tagged builds, GitHub Actions creates a draft release only after all build and artifact checks pass, including launching the Windows app from the extracted ZIP and mounting each macOS disk image. Review the files before publishing it manually.
+Tagged builds launch the Windows app from the extracted ZIP, mount and verify each macOS disk image, and check the Linux package architecture and native resources. Review the draft before publishing manually unless the tag opted into publishing.
 
 ## Connecting from a Phone
 
@@ -68,13 +79,15 @@ Use Electremote on a trusted local network. Anyone with an unused pairing link c
 
 ### macOS
 
-These builds are not signed or notarized. macOS Gatekeeper may report that Apple cannot check the application for malicious software.
+These builds are ad hoc signed, not Developer ID signed or notarized. macOS Gatekeeper may report that Apple cannot check the application for malicious software.
 
 If macOS reports **No mountable file systems**, the disk image failed to mount; this is not a Gatekeeper warning. Verify the download against `SHA256SUMS` and download it again if the checksum does not match.
 
 Only continue when the file came from this repository's GitHub Release and its checksum matches. In Finder, Control-click Electremote, choose **Open**, then confirm **Open**. Depending on the macOS version, you can also approve the blocked application under **System Settings > Privacy & Security**.
 
 Electremote needs permission to send media-control keystrokes. If the desktop app shows **Allow Electremote to control media**, go to **System Settings > Privacy & Security** and enable Electremote under **Device Control and Data Access** or **Accessibility**, depending on your version of macOS. Grant permission to the copy in Applications, not a copy on a mounted disk image.
+
+After an update, macOS may still show the old permission entry as enabled even though it no longer matches the new app. If that happens, quit Electremote, remove its old entry from the permission list, add the current copy from Applications, and reopen it. Ad hoc signing cannot carry permissions across different builds.
 
 Frictionless distribution would require a paid Apple Developer Program membership, Developer ID signing, hardened runtime configuration, and notarization. Those are intentionally not configured.
 
@@ -96,11 +109,11 @@ Linux media controls send keystrokes through X11. They may not work with apps ru
 
 ## Checksums
 
-Each draft release includes a `SHA256SUMS` file containing the SHA-256 checksums of its installer and package files. Download it alongside the file you intend to install, then verify the file before running it:
+Each release includes a `SHA256SUMS` file containing the SHA-256 checksums of its installer and package files. Download it alongside the file you intend to install, then verify the file before running it:
 
 ```sh
 # macOS (replace the filename with the one you downloaded)
-shasum -a 256 Electremote-1.0.0-arm64.dmg
+shasum -a 256 Electremote-2.0.0-arm64.dmg
 ```
 
 ```powershell

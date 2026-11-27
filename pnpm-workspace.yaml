@@ -14,5 +14,3 @@ disallowWorkspaceCycles: true
 nodeLinker: hoisted
 strictPeerDependencies: true
 savePrefix: ''
-minimumReleaseAgeExclude:
-  - eslint-plugin-react-refresh@0.5.6
