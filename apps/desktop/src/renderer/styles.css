@@ -1,6 +1,10 @@
 :root {
   color: #f4f2ea;
-  background: #181a17;
+  background-color: #181a17;
+  background-image:
+    linear-gradient(rgba(244, 242, 234, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(244, 242, 234, 0.035) 1px, transparent 1px);
+  background-size: 32px 32px;
   font-family: 'Avenir Next', 'Trebuchet MS', sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -15,14 +19,6 @@ body,
 #root {
   min-height: 100%;
   margin: 0;
-}
-
-body {
-  background-color: #181a17;
-  background-image:
-    linear-gradient(rgba(244, 242, 234, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(244, 242, 234, 0.035) 1px, transparent 1px);
-  background-size: 32px 32px;
 }
 
 button,
@@ -136,6 +132,12 @@ h1 {
   padding: 4px 0;
 }
 
+.host-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 176px), 1fr));
+  gap: 12px;
+}
+
 .url-row,
 .adapter-row {
   display: grid;
@@ -145,7 +147,8 @@ h1 {
 }
 
 .url-row code,
-.adapter-row select {
+.adapter-row select,
+.control-mode-select {
   min-width: 0;
   height: 42px;
   border: 1px solid #5c5f57;
@@ -161,8 +164,15 @@ h1 {
   white-space: nowrap;
 }
 
-.adapter-row select {
+.adapter-row select,
+.control-mode-select {
   padding: 0 12px;
+}
+
+.control-mode-select {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
 }
 
 .icon-button {
@@ -200,6 +210,15 @@ h1 {
   margin: 0;
   color: #a9aba3;
   font-size: 0.82rem;
+}
+
+.host-notes {
+  display: grid;
+  gap: 4px;
+}
+
+.host-note--error {
+  color: #ffd8d1;
 }
 
 .qr-panel {
@@ -319,7 +338,8 @@ h1 {
   }
 
   .host-details {
-    gap: 12px;
+    gap: 8px;
+    padding-block: 0;
   }
 
   .qr-panel {

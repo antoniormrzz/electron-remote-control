@@ -12,6 +12,7 @@ const api: ElectremoteApi = {
   },
   refreshNetworkInterfaces: () => ipcRenderer.invoke(HOST_IPC_CHANNELS.refreshInterfaces),
   selectNetworkInterface: (id) => ipcRenderer.invoke(HOST_IPC_CHANNELS.selectInterface, id),
+  selectControlMode: (mode) => ipcRenderer.invoke(HOST_IPC_CHANNELS.selectControlMode, mode),
   copyHostUrl: () => ipcRenderer.invoke(HOST_IPC_CHANNELS.copyUrl),
 };
 

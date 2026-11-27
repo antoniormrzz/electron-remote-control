@@ -12,12 +12,20 @@ Download the package for your computer from [GitHub Releases](https://github.com
 
 Open Electremote on your computer. Connect your phone to the same local network and scan the QR code in the desktop window. The controls open in your phone's browser; no account or mobile app is required. See the [distribution guide](docs/DISTRIBUTION.md) for checksums, unsigned build warnings, and pairing help.
 
+## Keep Electremote Running
+
+- **macOS:** Closing the window keeps the remote active. Click the Dock icon to reopen the window, or choose **Quit** from the Dock menu to stop the remote.
+- **Windows:** Closing the window keeps the remote active in the system tray. Find Electremote in the notification area, including under hidden icons, and choose **Show Electremote** or **Quit Electremote**.
+- **Linux:** If your desktop shows the Electremote tray icon, select **Keep running when the window closes** from its menu. Closing the window otherwise quits the app. Use the tray menu to reopen or quit.
+
 ## Controls
 
 - Play and pause
 - Volume up and down
 - Rewind
 - Fast-forward
+
+Choose **Control mode** in the desktop app. **Keyboard shortcuts** sends Space and arrow keys to the focused app. **System media keys** sends play/pause, system volume, and previous/next track to the operating system. The phone buttons stay the same, but in media-key mode Rewind and Fast-forward skip between tracks rather than seek. The OS decides which player handles those keys. Keyboard shortcuts are the default when Electremote starts.
 
 ## Architecture
 

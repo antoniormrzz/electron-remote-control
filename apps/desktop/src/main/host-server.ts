@@ -6,7 +6,7 @@ import { isControlRequest } from '@electremote/protocol';
 import type { ControlResult } from '@electremote/protocol';
 import express from 'express';
 import { WebSocket, WebSocketServer } from 'ws';
-import type { HostSnapshot, OnlineHostSnapshot } from '../shared/host';
+import type { ControlMode, HostSnapshot, OnlineHostSnapshot } from '../shared/host';
 import { MediaController } from './media-controller';
 import { listNetworkInterfaces, selectPreferredInterface } from './network-interfaces';
 
@@ -93,6 +93,11 @@ export class HostServer {
     }
 
     this.selectedInterface = candidate;
+    return this.publishOnlineSnapshot();
+  }
+
+  public selectControlMode(mode: ControlMode): HostSnapshot {
+    this.mediaController.setControlMode(mode);
     return this.publishOnlineSnapshot();
   }
 
@@ -316,6 +321,7 @@ export class HostServer {
       port: address.port,
       connectionCount: this.socketHealth.size,
       localOnly: this.selectedInterface.localOnly,
+      controlMode: this.mediaController.getControlMode(),
       controlStatus,
     };
     return this.publish(snapshot);

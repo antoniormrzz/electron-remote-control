@@ -9,6 +9,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
+import { isControlMode } from '../shared/host';
 import type { HostSnapshot } from '../shared/host';
 
 const INITIAL_SNAPSHOT: HostSnapshot = { status: 'starting' };
@@ -23,6 +24,7 @@ export function App() {
   );
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [controlModeError, setControlModeError] = useState(false);
 
   useEffect(() => {
     const api = window.electremote;
@@ -94,6 +96,23 @@ export function App() {
     }
   }
 
+  async function selectControlMode(mode: string): Promise<void> {
+    setBusy(true);
+    setControlModeError(false);
+    try {
+      if (!window.electremote || !isControlMode(mode)) {
+        throw new Error('Invalid control mode selection.');
+      }
+
+      setSnapshot(await window.electremote.selectControlMode(mode));
+    } catch (error) {
+      console.error('Unable to change Electremote control mode.', error);
+      setControlModeError(true);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <main className={needsPermission ? 'desktop-shell desktop-shell--permission' : 'desktop-shell'}>
       <header className="app-header">
@@ -139,41 +158,69 @@ export function App() {
               </div>
             </div>
 
-            <div>
-              <label className="section-label" htmlFor="network-interface">
-                Network adapter
-              </label>
-              <div className="adapter-row">
+            <div className="host-options">
+              <div>
+                <label className="section-label" htmlFor="network-interface">
+                  Network adapter
+                </label>
+                <div className="adapter-row">
+                  <select
+                    id="network-interface"
+                    value={snapshot.selectedInterfaceId}
+                    disabled={busy}
+                    onChange={(event) => void selectInterface(event.target.value)}
+                  >
+                    {snapshot.interfaces.map((networkInterface) => (
+                      <option key={networkInterface.id} value={networkInterface.id}>
+                        {networkInterface.name} · {networkInterface.address}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    className="icon-button"
+                    type="button"
+                    title="Refresh network adapters"
+                    aria-label="Refresh network adapters"
+                    disabled={busy}
+                    onClick={() => void refreshInterfaces()}
+                  >
+                    <RefreshCw className={busy ? 'spin' : undefined} aria-hidden="true" />
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="section-label" htmlFor="control-mode">
+                  Control mode
+                </label>
                 <select
-                  id="network-interface"
-                  value={snapshot.selectedInterfaceId}
+                  id="control-mode"
+                  className="control-mode-select"
+                  value={snapshot.controlMode}
                   disabled={busy}
-                  onChange={(event) => void selectInterface(event.target.value)}
+                  onChange={(event) => void selectControlMode(event.target.value)}
                 >
-                  {snapshot.interfaces.map((networkInterface) => (
-                    <option key={networkInterface.id} value={networkInterface.id}>
-                      {networkInterface.name} · {networkInterface.address}
-                    </option>
-                  ))}
+                  <option value="keyboard">Keyboard shortcuts</option>
+                  <option value="media-keys">System media keys</option>
                 </select>
-                <button
-                  className="icon-button"
-                  type="button"
-                  title="Refresh network adapters"
-                  aria-label="Refresh network adapters"
-                  disabled={busy}
-                  onClick={() => void refreshInterfaces()}
-                >
-                  <RefreshCw className={busy ? 'spin' : undefined} aria-hidden="true" />
-                </button>
               </div>
             </div>
 
-            <p className="host-note">
-              {snapshot.localOnly
-                ? 'No LAN adapter is available. This address works only on this computer.'
-                : 'Scan the code from a device connected to the same network.'}
-            </p>
+            <div className="host-notes">
+              <p className="host-note">
+                {snapshot.localOnly
+                  ? 'No LAN adapter is available. This address works only on this computer.'
+                  : 'Scan the code from a device connected to the same network.'}
+              </p>
+              {snapshot.controlMode === 'media-keys' && (
+                <p className="host-note">Rewind and fast-forward send previous and next track.</p>
+              )}
+              {controlModeError && (
+                <p className="host-note host-note--error" role="alert">
+                  Could not change the control mode. Try again.
+                </p>
+              )}
+            </div>
           </div>
 
           <div className="qr-panel" aria-label="Remote address QR code">

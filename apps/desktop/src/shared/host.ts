@@ -1,3 +1,9 @@
+export type ControlMode = 'keyboard' | 'media-keys';
+
+export function isControlMode(value: unknown): value is ControlMode {
+  return value === 'keyboard' || value === 'media-keys';
+}
+
 export interface NetworkInterfaceCandidate {
   id: string;
   name: string;
@@ -17,6 +23,7 @@ export interface OnlineHostSnapshot {
   port: number;
   connectionCount: number;
   localOnly: boolean;
+  controlMode: ControlMode;
   controlStatus: 'ready' | 'permission-required' | 'unavailable';
 }
 
@@ -32,6 +39,7 @@ export interface ElectremoteApi {
   onHostSnapshot(callback: (snapshot: HostSnapshot) => void): () => void;
   refreshNetworkInterfaces(): Promise<HostSnapshot>;
   selectNetworkInterface(id: string): Promise<HostSnapshot>;
+  selectControlMode(mode: ControlMode): Promise<HostSnapshot>;
   copyHostUrl(): Promise<boolean>;
 }
 
@@ -40,5 +48,6 @@ export const HOST_IPC_CHANNELS = {
   getSnapshot: 'host:get-snapshot',
   refreshInterfaces: 'host:refresh-interfaces',
   selectInterface: 'host:select-interface',
+  selectControlMode: 'host:select-control-mode',
   snapshotChanged: 'host:snapshot-changed',
 } as const;

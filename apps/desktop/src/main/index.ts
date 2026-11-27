@@ -1,11 +1,23 @@
 import path from 'node:path';
-import { app, BrowserWindow, clipboard, ipcMain, screen } from 'electron';
-import { HOST_IPC_CHANNELS } from '../shared/host';
+import {
+  app,
+  BrowserWindow,
+  clipboard,
+  ipcMain,
+  Menu,
+  MenuItem,
+  nativeImage,
+  screen,
+  Tray,
+} from 'electron';
+import { HOST_IPC_CHANNELS, isControlMode } from '../shared/host';
 import { HostServer } from './host-server';
 import { MediaController } from './media-controller';
 
 let mainWindow: BrowserWindow | null = null;
 let hostServer: HostServer | null = null;
+let tray: Tray | null = null;
+let keepRunningOnClose = process.platform === 'win32';
 let quitting = false;
 
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
@@ -41,6 +53,13 @@ function registerHostIpc(): void {
 
     return hostServer.selectInterface(id);
   });
+  ipcMain.handle(HOST_IPC_CHANNELS.selectControlMode, (_event, mode: unknown) => {
+    if (!isControlMode(mode) || !hostServer) {
+      throw new Error('Invalid control mode selection.');
+    }
+
+    return hostServer.selectControlMode(mode);
+  });
   ipcMain.handle(HOST_IPC_CHANNELS.copyUrl, () => {
     const snapshot = hostServer?.getSnapshot();
     if (snapshot?.status !== 'online') {
@@ -62,18 +81,13 @@ function getPackagedRobotBinaryPath(): string | undefined {
   return app.isPackaged ? path.join(process.resourcesPath, 'robotjs', 'node.napi.node') : undefined;
 }
 
-function getWindowIconPath(): string | undefined {
-  if (process.platform !== 'linux') {
-    return undefined;
-  }
-
+function getAppIconPath(): string {
   return app.isPackaged
     ? path.join(process.resourcesPath, 'icon.png')
     : path.resolve(app.getAppPath(), 'assets/icon.png');
 }
 
 function createMainWindow(): void {
-  const icon = getWindowIconPath();
   // Wayland does not provide global cursor or window coordinates.
   const useGlobalPosition = process.platform !== 'linux';
   const { workArea } = useGlobalPosition
@@ -95,7 +109,7 @@ function createMainWindow(): void {
     minWidth: Math.min(720, width),
     minHeight: Math.min(560, height),
     backgroundColor: '#181a17',
-    ...(icon ? { icon } : {}),
+    ...(process.platform === 'linux' ? { icon: getAppIconPath() } : {}),
     show: false,
     title: 'Electremote',
     webPreferences: {
@@ -129,12 +143,12 @@ function createMainWindow(): void {
   }
 }
 
-if (process.platform === 'win32') {
-  app.setAppUserModelId('com.antoniormrzz.electremote');
-}
-
-app.on('second-instance', () => {
+function showMainWindow(): void {
+  if (quitting) {
+    return;
+  }
   if (!mainWindow) {
+    createMainWindow();
     return;
   }
 
@@ -143,7 +157,52 @@ app.on('second-instance', () => {
   }
   mainWindow.show();
   mainWindow.focus();
-});
+}
+
+function createTray(): void {
+  if (process.platform !== 'win32' && process.platform !== 'linux') {
+    return;
+  }
+
+  const icon = nativeImage.createFromPath(getAppIconPath());
+  if (icon.isEmpty()) {
+    console.error('Unable to load the Electremote tray icon.');
+    return;
+  }
+
+  try {
+    tray = new Tray(icon.resize({ width: 32, height: 32 }));
+  } catch (error) {
+    console.error('Unable to create the Electremote tray icon.', error);
+    return;
+  }
+
+  const menu = new Menu();
+  menu.append(new MenuItem({ label: 'Show Electremote', click: showMainWindow }));
+  // A Linux desktop may not display the icon even if Electron creates it.
+  if (process.platform === 'linux') {
+    menu.append(
+      new MenuItem({
+        label: 'Keep running when the window closes',
+        type: 'checkbox',
+        click: (item) => {
+          keepRunningOnClose = item.checked;
+          tray?.setContextMenu(menu);
+        },
+      }),
+    );
+  }
+  menu.append(new MenuItem({ type: 'separator' }));
+  menu.append(new MenuItem({ label: 'Quit Electremote', click: () => app.quit() }));
+
+  tray.setToolTip('Electremote');
+  tray.setContextMenu(menu);
+  tray.on('click', showMainWindow);
+}
+
+if (process.platform === 'win32') {
+  app.setAppUserModelId('com.antoniormrzz.electremote');
+}
 
 if (hasSingleInstanceLock) {
   void app.whenReady().then(() => {
@@ -161,30 +220,41 @@ if (hasSingleInstanceLock) {
     });
     registerHostIpc();
     createMainWindow();
+    createTray();
     void hostServer.start();
 
-    app.on('activate', () => {
-      if (BrowserWindow.getAllWindows().length === 0) {
-        createMainWindow();
-      }
-    });
+    app.on('activate', showMainWindow);
+    app.on('second-instance', showMainWindow);
   });
 }
 
 app.on('before-quit', (event) => {
-  if (quitting || !hostServer) {
+  if (!hostServer) {
     return;
   }
 
   event.preventDefault();
-  void hostServer.stop().finally(() => {
-    quitting = true;
-    app.quit();
-  });
+  if (quitting) {
+    return;
+  }
+
+  quitting = true;
+  void hostServer
+    .stop()
+    .catch((error: unknown) => console.error('Unable to stop the Electremote host.', error))
+    .finally(() => {
+      hostServer = null;
+      app.quit();
+    });
+});
+
+app.on('will-quit', () => {
+  tray?.destroy();
+  tray = null;
 });
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
+  if (process.platform !== 'darwin' && !(tray && keepRunningOnClose)) {
     app.quit();
   }
 });
