@@ -17,7 +17,7 @@ Create an unpacked application for the current operating system and architecture
 pnpm package
 ```
 
-Create the configured installer or package for the current operating system and architecture:
+Create the distribution package for the current operating system and architecture:
 
 ```sh
 pnpm make
@@ -27,14 +27,14 @@ Generated files are written under `apps/desktop/out/`.
 
 ## Release Tags
 
-The tag and both package versions must match exactly. For example, version `0.1.2` must use tag `v0.1.2`.
+The tag and both package versions must match exactly. For example, version `0.1.3` must use tag `v0.1.3`.
 
 ```sh
-git tag v0.1.2
-git push origin v0.1.2
+git tag v0.1.3
+git push origin v0.1.3
 ```
 
-A matching tag verifies package versions, builds the installers below, and creates a draft GitHub Release after all builds succeed.
+A matching tag verifies package versions, builds the packages below, and creates a draft GitHub Release after all builds succeed.
 
 ## Test the Build Matrix
 
@@ -44,15 +44,15 @@ The workflow must first be present on the repository's default branch for the **
 
 The release artifacts are:
 
-| Platform | Architecture | Artifact                                             |
-| -------- | ------------ | ---------------------------------------------------- |
-| macOS    | ARM64        | `Electremote-<version>-arm64.dmg`                    |
-| macOS    | x64          | `Electremote-<version>-x64.dmg`                      |
-| Windows  | x64          | Squirrel Setup.exe, NuGet package, RELEASES metadata |
-| Linux    | ARM64        | DEB and RPM                                          |
-| Linux    | x64          | DEB and RPM                                          |
+| Platform | Architecture | Artifact                              |
+| -------- | ------------ | ------------------------------------- |
+| macOS    | ARM64        | `Electremote-<version>-arm64.dmg`     |
+| macOS    | x64          | `Electremote-<version>-x64.dmg`       |
+| Windows  | x64          | `Electremote-win32-x64-<version>.zip` |
+| Linux    | ARM64        | DEB and RPM                           |
+| Linux    | x64          | DEB and RPM                           |
 
-For tagged builds, GitHub Actions creates a draft release only after all build and artifact checks pass, including mounting each macOS disk image. Review and smoke-test the files before publishing it manually.
+For tagged builds, GitHub Actions creates a draft release only after all build and artifact checks pass, including launching the Windows app from the extracted ZIP and mounting each macOS disk image. Review the files before publishing it manually.
 
 ## Connecting from a Phone
 
@@ -74,6 +74,8 @@ Frictionless distribution would require a paid Apple Developer Program membershi
 
 ### Windows
 
+Download the Windows x64 ZIP, choose **Extract All** in File Explorer, and open `Electremote.exe` from the extracted folder. Keep the other files and the `resources` folder alongside it. There is no setup program or administrator step. To update, quit Electremote and extract the new version to a new folder.
+
 These builds have no Authenticode signature. Microsoft Defender SmartScreen may show an **Unknown publisher** warning.
 
 Only continue when the file came from this repository's GitHub Release and its checksum matches. Choose **More info**, verify the application name, then choose **Run anyway**.
@@ -90,7 +92,7 @@ Each draft release includes a `SHA256SUMS` file containing the SHA-256 checksums
 
 ```sh
 # macOS (replace the filename with the one you downloaded)
-shasum -a 256 Electremote-0.1.2-arm64.dmg
+shasum -a 256 Electremote-0.1.3-arm64.dmg
 ```
 
 ```powershell

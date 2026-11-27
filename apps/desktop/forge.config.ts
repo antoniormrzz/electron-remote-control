@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { MakerDeb } from '@electron-forge/maker-deb';
 import { MakerDMG } from '@electron-forge/maker-dmg';
 import { MakerRpm } from '@electron-forge/maker-rpm';
-import { MakerSquirrel } from '@electron-forge/maker-squirrel';
+import { MakerZIP } from '@electron-forge/maker-zip';
 import type { ForgeConfig } from '@electron-forge/shared-types';
 import { VitePlugin } from '@electron-forge/plugin-vite';
 
@@ -29,15 +29,7 @@ const config: ForgeConfig = {
     },
   },
   makers: [
-    new MakerSquirrel(
-      {
-        authors: 'Antonio Ramirez',
-        description,
-        name: 'Electremote',
-        setupIcon: path.join(assetsDirectory, 'icon.ico'),
-      },
-      ['win32'],
-    ),
+    new MakerZIP({}, ['win32']),
     new MakerDMG(
       {
         icon: path.join(assetsDirectory, 'icon.icns'),

@@ -1,6 +1,5 @@
 import path from 'node:path';
 import { app, BrowserWindow, clipboard, ipcMain } from 'electron';
-import squirrelStartup from 'electron-squirrel-startup';
 import { HOST_IPC_CHANNELS } from '../shared/host';
 import { HostServer } from './host-server';
 import { MediaController } from './media-controller';
@@ -12,7 +11,7 @@ let quitting = false;
 
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
 
-if (!hasSingleInstanceLock || squirrelStartup) {
+if (!hasSingleInstanceLock) {
   app.quit();
 }
 
@@ -113,7 +112,9 @@ function createMainWindow(): void {
   }
 }
 
-app.setAppUserModelId('com.squirrel.Electremote.Electremote');
+if (process.platform === 'win32') {
+  app.setAppUserModelId('com.antoniormrzz.electremote');
+}
 
 app.on('second-instance', () => {
   if (!mainWindow) {
@@ -127,7 +128,7 @@ app.on('second-instance', () => {
   mainWindow.focus();
 });
 
-if (hasSingleInstanceLock && !squirrelStartup) {
+if (hasSingleInstanceLock) {
   void app.whenReady().then(() => {
     mediaController = new MediaController(getPackagedRobotBinaryPath());
     mediaController.initialize();

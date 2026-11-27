@@ -11,7 +11,7 @@ This repository is being rebuilt from scratch. This README currently serves as t
 - Use the served web interface immediately.
 - Require no account, cloud service, mobile application, or manual network setup.
 - Support Windows, macOS, and Linux.
-- Distribute ready-to-install application packages.
+- Distribute ready-to-use application packages.
 
 ## Controls
 
@@ -87,7 +87,7 @@ pnpm build
 pnpm package
 ```
 
-`pnpm package` creates an unpacked application for the current operating system and architecture. Installers and signed release artifacts are separate checklist items.
+`pnpm package` creates an unpacked application for the current operating system and architecture. See the [distribution guide](docs/DISTRIBUTION.md) for packaged builds.
 
 ## Engineering Standards
 
@@ -145,7 +145,7 @@ pnpm package
 
 - [x] Bundle the remote build with Electron.
 - [x] Bundle and unpack the RobotJS native binary correctly.
-- [x] Produce Windows installers.
+- [x] Produce a portable Windows ZIP.
 - [x] Produce macOS packages.
 - [x] Produce Linux packages.
 - [x] Automate release builds with GitHub Actions.

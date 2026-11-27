@@ -43,7 +43,7 @@ jobs:
             expected: '\.dmg$'
           - runner: windows-latest
             artifact: electremote-windows-x64
-            expected: '\.exe$'
+            expected: '\.zip$'
           - runner: ubuntu-24.04
             artifact: electremote-linux-x64
             expected: '\.(deb|rpm)$'
@@ -75,7 +75,7 @@ jobs:
         run: pnpm typecheck
       - name: Build
         run: pnpm build
-      - name: Make installers
+      - name: Make distribution packages
         run: pnpm make
       - name: Verify RobotJS resource
         shell: bash
@@ -83,6 +83,50 @@ jobs:
       - name: Verify release artifacts
         shell: bash
         run: find apps/desktop/out/make -type f | grep -E '${{ matrix.expected }}'
+      - name: Launch Electremote from the Windows ZIP
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $version = (Get-Content apps/desktop/package.json -Raw | ConvertFrom-Json).version
+          $archive = "apps/desktop/out/make/zip/win32/x64/Electremote-win32-x64-$version.zip"
+          $destination = Join-Path $env:RUNNER_TEMP 'electremote-windows-smoke'
+          Expand-Archive -LiteralPath $archive -DestinationPath $destination
+          $binary = Join-Path $destination 'resources/robotjs/node.napi.node'
+          node -e "require(process.argv[1])" $binary
+          if ($LASTEXITCODE -ne 0) {
+            throw 'The packaged RobotJS binary failed to load.'
+          }
+
+          $exe = Join-Path $destination 'Electremote.exe'
+          $app = Start-Process -FilePath $exe -WorkingDirectory $destination -PassThru
+          try {
+            $deadline = (Get-Date).AddSeconds(45)
+            do {
+              $app.Refresh()
+              if ($app.HasExited) {
+                throw "Electremote exited before serving requests (exit code: $($app.ExitCode))."
+              }
+              $listener = Get-NetTCPConnection -State Listen |
+                Where-Object { $_.OwningProcess -eq $app.Id -and $_.LocalAddress -eq '0.0.0.0' } |
+                Select-Object -First 1
+              if ($listener) {
+                $response = Invoke-WebRequest -Uri "http://127.0.0.1:$($listener.LocalPort)/" -SkipHttpErrorCheck -TimeoutSec 5
+                if ($response.StatusCode -ne 403) {
+                  throw "Expected the remote page to reject an unauthenticated request, got $($response.StatusCode)."
+                }
+                Write-Host 'Electremote launched and the remote server responded.'
+                break
+              }
+              Start-Sleep -Seconds 1
+            } while ((Get-Date) -lt $deadline)
+            if (-not $listener) {
+              throw 'Electremote did not start its remote server within 45 seconds.'
+            }
+          } finally {
+            if (-not $app.HasExited) {
+              Stop-Process -Id $app.Id
+            }
+          }
       - name: Verify macOS disk image mounts
         if: runner.os == 'macOS'
         shell: bash
