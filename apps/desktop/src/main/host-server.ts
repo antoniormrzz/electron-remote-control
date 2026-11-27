@@ -74,6 +74,8 @@ export class HostServer {
   private shuttingDown = false;
   private pointerEnabled = false;
   private keyboardEnabled = false;
+  private pointerBlocked = false;
+  private keyboardBlocked = false;
   private clipboardEnabled = false;
   private clipboardAccessVersion = 0;
   private nextKeyboardRequestAt = 0;
@@ -144,7 +146,10 @@ export class HostServer {
 
   public refreshInterfaces(): HostSnapshot {
     this.interfaces = listNetworkInterfaces();
-    this.selectedInterface = selectPreferredInterface(this.interfaces, this.selectedInterface.id);
+    this.selectedInterface = selectPreferredInterface(
+      this.interfaces,
+      this.settings.preferredAdapter,
+    );
     return this.publishOnlineSnapshot();
   }
 
@@ -155,11 +160,13 @@ export class HostServer {
       throw new Error('The selected network interface is no longer available.');
     }
 
+    this.settings.setPreferredAdapter(candidate);
     this.selectedInterface = candidate;
     return this.publishOnlineSnapshot();
   }
 
   public selectControlMode(mode: ControlMode): HostSnapshot {
+    this.settings.setControlMode(mode);
     this.mediaController.setControlMode(mode);
     return this.publishOnlineSnapshot();
   }
@@ -170,7 +177,8 @@ export class HostServer {
       throw new Error('Device control must be ready before enabling the phone touchpad.');
     }
 
-    this.pointerEnabled = enabled;
+    this.settings.setRemoteAccess('pointer', enabled);
+    this.pointerBlocked = false;
     return this.publishOnlineSnapshot();
   }
 
@@ -180,7 +188,8 @@ export class HostServer {
       throw new Error('Device control must be ready before enabling the phone keyboard.');
     }
 
-    this.keyboardEnabled = enabled;
+    this.settings.setRemoteAccess('keyboard', enabled);
+    this.keyboardBlocked = false;
     return this.publishOnlineSnapshot();
   }
 
@@ -189,7 +198,7 @@ export class HostServer {
       throw new Error('Start the host before enabling clipboard sharing.');
     }
 
-    this.clipboardEnabled = enabled;
+    this.settings.setRemoteAccess('clipboard', enabled);
     this.clipboardAccessVersion++;
     return this.publishOnlineSnapshot();
   }
@@ -221,6 +230,8 @@ export class HostServer {
     this.clipboardAccessVersion++;
     this.nextKeyboardRequestAt = 0;
     this.releasePointerHold(false);
+    this.pointerBlocked = false;
+    this.keyboardBlocked = false;
     this.stopPermissionRecheck();
 
     if (this.heartbeat) {
@@ -257,6 +268,13 @@ export class HostServer {
     }
 
     const port = this.settings.port;
+    this.mediaController.setControlMode(this.settings.controlMode);
+    this.interfaces = listNetworkInterfaces();
+    const preference = this.settings.preferredAdapter;
+    this.selectedInterface = selectPreferredInterface(this.interfaces, preference);
+    if (!preference && !this.selectedInterface.localOnly) {
+      this.settings.setPreferredAdapter(this.selectedInterface);
+    }
     this.pairingToken = randomBytes(24).toString('base64url');
     const app = express();
 
@@ -521,6 +539,9 @@ export class HostServer {
 
     const error = this.mediaController.executeKeyboard(request);
     this.nextKeyboardRequestAt = performance.now() + KEYBOARD_COOLDOWN_MS;
+    if (error === 'execution-failed') {
+      this.keyboardBlocked = true;
+    }
     if (error === 'permission-required' || error === 'execution-failed') {
       this.publishOnlineSnapshot();
     }
@@ -539,7 +560,7 @@ export class HostServer {
         this.pointerHold?.timeout.refresh();
       } else if (request.action === 'start') {
         if (!this.mediaController.setPointerHold(true)) {
-          this.setPointerEnabled(false);
+          this.pausePointerAfterFailure();
           return;
         }
         const timeout = setTimeout(() => {
@@ -558,8 +579,13 @@ export class HostServer {
     }
 
     if (!this.mediaController.executePointer(request, hold !== null)) {
-      this.setPointerEnabled(false);
+      this.pausePointerAfterFailure();
     }
+  }
+
+  private pausePointerAfterFailure(): void {
+    this.pointerBlocked = this.mediaController.getStatus() !== 'permission-required';
+    this.publishOnlineSnapshot();
   }
 
   private releasePointerHold(notify = true): void {
@@ -572,6 +598,7 @@ export class HostServer {
     this.pointerHold = null;
     if (!this.mediaController.setPointerHold(false)) {
       this.pointerEnabled = false;
+      this.pointerBlocked = true;
     }
     if (notify) {
       this.sendPointerStatus(hold.socket);
@@ -588,18 +615,16 @@ export class HostServer {
       return this.snapshot;
     }
 
+    const remoteAccess = this.settings.remoteAccess;
     let controlStatus = this.mediaController.getStatus();
-    if (controlStatus !== 'ready') {
-      this.pointerEnabled = false;
-      this.keyboardEnabled = false;
-    }
+    this.pointerEnabled = remoteAccess.pointer && !this.pointerBlocked && controlStatus === 'ready';
     if (!this.pointerEnabled && this.pointerHold) {
       this.releasePointerHold(false);
       controlStatus = this.mediaController.getStatus();
-      if (controlStatus !== 'ready') {
-        this.keyboardEnabled = false;
-      }
     }
+    this.keyboardEnabled =
+      remoteAccess.keyboard && !this.keyboardBlocked && controlStatus === 'ready';
+    this.clipboardEnabled = remoteAccess.clipboard;
     if (controlStatus === 'permission-required') {
       if (!this.permissionRecheck) {
         this.permissionRecheck = setInterval(
@@ -627,6 +652,7 @@ export class HostServer {
       pointerEnabled: this.pointerEnabled,
       keyboardEnabled: this.keyboardEnabled,
       clipboardEnabled: this.clipboardEnabled,
+      remoteAccess,
     };
     if (
       this.snapshot.status === 'online' &&

@@ -1,4 +1,5 @@
 import {
+  CLIPBOARD_FOCUS_REQUIRED_STATUS,
   CLIPBOARD_REQUEST_HEADER,
   CLIPBOARD_TEXT_PATH,
   MAX_CLIPBOARD_TEXT_BYTES,
@@ -9,6 +10,7 @@ import type { ErrorRequestHandler } from 'express';
 export interface TextClipboard {
   readText(): Promise<string>;
   writeText(text: string): Promise<void>;
+  canAccess?(): boolean;
 }
 
 export function createClipboardRouter(
@@ -45,6 +47,10 @@ export function createClipboardRouter(
       response.sendStatus(403);
       return;
     }
+    if (clipboard.canAccess?.() === false) {
+      response.sendStatus(CLIPBOARD_FOCUS_REQUIRED_STATUS);
+      return;
+    }
     response.locals.accessVersion = accessVersion;
     next();
   });
@@ -53,6 +59,8 @@ export function createClipboardRouter(
     const text = await clipboard.readText();
     if (response.locals.accessVersion !== getAccessVersion()) {
       response.sendStatus(403);
+    } else if (clipboard.canAccess?.() === false) {
+      response.sendStatus(CLIPBOARD_FOCUS_REQUIRED_STATUS);
     } else if (text.length === 0) {
       response.status(204).end();
     } else if (Buffer.byteLength(text, 'utf8') > MAX_CLIPBOARD_TEXT_BYTES) {
@@ -87,6 +95,10 @@ export function createClipboardRouter(
       return;
     }
 
+    if (clipboard.canAccess?.() === false) {
+      response.sendStatus(CLIPBOARD_FOCUS_REQUIRED_STATUS);
+      return;
+    }
     await clipboard.writeText(text);
     response.status(204).end();
   });

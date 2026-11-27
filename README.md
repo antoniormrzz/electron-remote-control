@@ -29,17 +29,19 @@ Open **Settings** in the top-right of the desktop window and turn on **Start at 
 - Rewind
 - Fast-forward
 
-Choose **Control mode** in the desktop app. **Keyboard shortcuts** sends Space and arrow keys to the focused app. **System media keys** sends play/pause, system volume, and previous/next track to the operating system. The phone buttons stay the same, but in media-key mode Rewind and Fast-forward skip between tracks rather than seek. The OS decides which player handles those keys. Keyboard shortcuts are the default when Electremote starts.
+Choose **Control mode** in the desktop app. **Keyboard shortcuts** sends Space and arrow keys to the focused app. **System media keys** sends play/pause, system volume, and previous/next track to the operating system. The phone buttons stay the same, but in media-key mode Rewind and Fast-forward skip between tracks rather than seek. The OS decides which player handles those keys. Electremote remembers your choice and prefers the last-used network adapter when it is available.
 
-To use your phone as a mouse, turn on **Phone touchpad** in the desktop app, then choose **Open touchpad** on the phone. Slide to move, tap to click, and use the side strip to scroll. This is off each time Electremote starts. While it's on, any device paired with the current QR link can move and click the mouse, so keep the link private and turn the touchpad off when you're done.
+To use your phone as a mouse, turn on **Phone touchpad** in the desktop app, then choose **Open touchpad** on the phone. Slide to move, tap to click, and use the side strip to scroll. In a desktop browser, click and drag on the pad to move the remote pointer. While it's on, any device paired with the current QR link can move and click the mouse, so keep the link private and turn the touchpad off when you're done.
 
 Use **Right click** and **Middle click** for those buttons. Tap **Hold left**, slide on the pad to drag, then tap **Release left**. The hold also releases when you leave the touchpad, disconnect, or turn it off on the desktop.
 
 For typing, turn on **Phone keyboard** separately in the desktop app and choose **Open keyboard** on your phone. Focus the destination on your computer, type with the phone's native keyboard, then tap **Send text**. Use **Enter**, navigation and editing buttons, or **Compose shortcut** for combinations like Command+Space, Alt+F4, Shift+Delete, or Shift+Alt. Copy, Paste and Select all use Command on macOS and Ctrl on Windows and Linux.
 
-Text goes to the focused app without using the desktop clipboard. Send up to 120 characters at once: use printable ASCII on Linux/X11; on macOS and Windows, text is limited to basic Unicode (no line breaks or supplementary characters like most emoji). This access starts off and applies to all currently paired devices while enabled. Keep the link private and turn the keyboard off when you're done.
+Text goes to the focused app without using the desktop clipboard. Send up to 120 characters at once: use printable ASCII on Linux/X11; on macOS and Windows, text is limited to basic Unicode (no line breaks or supplementary characters like most emoji).
 
-For longer text, turn on **Clipboard sharing** in the desktop app and choose **Open clipboard** on your phone. **Get desktop clipboard** puts the desktop's plain text in the box for you to copy. To go the other way, paste into the box and choose **Set desktop clipboard**, then paste normally on the computer. Transfers support up to 1 MiB of UTF-8 text, including line breaks, Markdown, and emoji. This starts off each time Electremote opens and lets any paired device read or replace the desktop's text clipboard while enabled. Nothing is synced automatically or kept in a history. Use it only on a trusted network.
+For longer text, turn on **Clipboard sharing** in the desktop app and choose **Open clipboard** on your phone. **Get desktop clipboard** puts the desktop's plain text in the box for you to copy. To go the other way, paste into the box and choose **Set desktop clipboard**, then paste normally on the computer. Transfers support up to 1 MiB of UTF-8 text, including line breaks, Markdown, and emoji. Nothing is synced automatically or kept in a history.
+
+The touchpad, keyboard, and clipboard switches are off by default and remember your choice across restarts. When enabled, they apply to all paired devices. Touchpad and keyboard access pauses if the operating system still needs permission. Keep the pairing link private, use a trusted network, and turn off any access you no longer want.
 
 ## Architecture
 

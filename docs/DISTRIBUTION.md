@@ -105,7 +105,9 @@ Removing this warning requires a paid code-signing certificate or an eligible cl
 
 The DEB and RPM files are not distributed through a signed package repository. Install them only after verifying their source and checksum.
 
-Linux media controls send keystrokes through X11. They may not work with apps running natively under Wayland.
+Linux media controls and the touchpad use X11. Some Wayland desktops prompt for permission to accept XWayland input, but that does not guarantee pointer movement in native Wayland apps.
+
+For clipboard sharing on Wayland, focus the Electremote window before requesting a transfer. For example, copy in Firefox, then switch to Electremote before asking the remote to fetch it. For the other direction, focus Electremote for the transfer, then switch to the destination app and paste. The remote-control permission prompt does not grant background clipboard access.
 
 ## Checksums
 

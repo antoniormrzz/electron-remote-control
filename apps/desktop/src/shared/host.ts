@@ -1,4 +1,5 @@
 export type ControlMode = 'keyboard' | 'media-keys';
+export type RemoteAccess = Record<'pointer' | 'keyboard' | 'clipboard', boolean>;
 
 export function isControlMode(value: unknown): value is ControlMode {
   return value === 'keyboard' || value === 'media-keys';
@@ -33,6 +34,7 @@ export interface OnlineHostSnapshot {
   pointerEnabled: boolean;
   keyboardEnabled: boolean;
   clipboardEnabled: boolean;
+  remoteAccess: Readonly<RemoteAccess>;
 }
 
 export interface ErrorHostSnapshot {

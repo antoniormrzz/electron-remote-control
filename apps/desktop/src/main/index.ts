@@ -262,7 +262,20 @@ if (hasSingleInstanceLock) {
     const hostSettings = new HostSettingsStore(
       path.join(app.getPath('userData'), 'host-settings.json'),
     );
-    hostServer = new HostServer(getRemoteAssetsPath(), mediaController, clipboard, hostSettings);
+    const usesWaylandClipboard =
+      process.platform === 'linux' &&
+      process.env.XDG_SESSION_TYPE === 'wayland' &&
+      app.commandLine.getSwitchValue('ozone-platform') !== 'x11';
+    hostServer = new HostServer(
+      getRemoteAssetsPath(),
+      mediaController,
+      {
+        readText: () => clipboard.readText(),
+        writeText: (text) => clipboard.writeText(text),
+        canAccess: () => !usesWaylandClipboard || mainWindow?.isFocused() === true,
+      },
+      hostSettings,
+    );
     hostServer.subscribe((snapshot) => {
       broadcastHostSnapshot();
       if (snapshot.status === 'error') {

@@ -1,6 +1,8 @@
 import os from 'node:os';
 import type { NetworkInterfaceCandidate } from '../shared/host';
 
+export type NetworkInterfacePreference = Pick<NetworkInterfaceCandidate, 'id' | 'name'>;
+
 const LOOPBACK: NetworkInterfaceCandidate = {
   id: 'loopback:127.0.0.1',
   name: 'This computer only',
@@ -51,7 +53,12 @@ export function listNetworkInterfaces(): NetworkInterfaceCandidate[] {
 
 export function selectPreferredInterface(
   candidates: readonly NetworkInterfaceCandidate[],
-  currentId?: string,
+  preference?: NetworkInterfacePreference,
 ): NetworkInterfaceCandidate {
-  return candidates.find((candidate) => candidate.id === currentId) ?? candidates[0] ?? LOOPBACK;
+  return (
+    candidates.find((candidate) => candidate.id === preference?.id) ??
+    candidates.find((candidate) => candidate.name === preference?.name) ??
+    candidates[0] ??
+    LOOPBACK
+  );
 }

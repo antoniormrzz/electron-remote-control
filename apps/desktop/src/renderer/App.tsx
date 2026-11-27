@@ -40,6 +40,7 @@ export function App() {
     error: boolean;
   } | null>(null);
   const [controlModeError, setControlModeError] = useState(false);
+  const [adapterError, setAdapterError] = useState(false);
   const [inputError, setInputError] = useState<'touchpad' | 'keyboard' | 'clipboard' | null>(null);
 
   useEffect(() => {
@@ -106,8 +107,12 @@ export function App() {
     }
 
     setBusy(true);
+    setAdapterError(false);
     try {
       setSnapshot(await window.electremote.selectNetworkInterface(id));
+    } catch (error) {
+      console.error('Unable to save the network adapter selection.', error);
+      setAdapterError(true);
     } finally {
       setBusy(false);
     }
@@ -252,15 +257,22 @@ export function App() {
             <button
               className="input-toggle"
               type="button"
-              aria-pressed={snapshot.pointerEnabled}
+              aria-pressed={snapshot.remoteAccess.pointer}
               title="Allow paired devices to move, click, and scroll your mouse"
-              disabled={busy || (controlStatus !== 'ready' && !snapshot.pointerEnabled)}
-              onClick={() => void setInputEnabled('touchpad', !snapshot.pointerEnabled)}
+              disabled={busy || (controlStatus !== 'ready' && !snapshot.remoteAccess.pointer)}
+              onClick={() => void setInputEnabled('touchpad', !snapshot.remoteAccess.pointer)}
             >
               <Mouse size={16} aria-hidden="true" />
               <span>
                 Phone touchpad
-                <span aria-hidden="true">: {snapshot.pointerEnabled ? 'On' : 'Off'}</span>
+                <span aria-hidden="true">
+                  :{' '}
+                  {snapshot.pointerEnabled
+                    ? 'On'
+                    : snapshot.remoteAccess.pointer
+                      ? 'Paused'
+                      : 'Off'}
+                </span>
               </span>
             </button>
           )}
@@ -268,15 +280,22 @@ export function App() {
             <button
               className="input-toggle"
               type="button"
-              aria-pressed={snapshot.keyboardEnabled}
+              aria-pressed={snapshot.remoteAccess.keyboard}
               title="Allow paired devices to type and send shortcuts to your computer"
-              disabled={busy || (controlStatus !== 'ready' && !snapshot.keyboardEnabled)}
-              onClick={() => void setInputEnabled('keyboard', !snapshot.keyboardEnabled)}
+              disabled={busy || (controlStatus !== 'ready' && !snapshot.remoteAccess.keyboard)}
+              onClick={() => void setInputEnabled('keyboard', !snapshot.remoteAccess.keyboard)}
             >
               <Keyboard size={16} aria-hidden="true" />
               <span>
                 Phone keyboard
-                <span aria-hidden="true">: {snapshot.keyboardEnabled ? 'On' : 'Off'}</span>
+                <span aria-hidden="true">
+                  :{' '}
+                  {snapshot.keyboardEnabled
+                    ? 'On'
+                    : snapshot.remoteAccess.keyboard
+                      ? 'Paused'
+                      : 'Off'}
+                </span>
               </span>
             </button>
           )}
@@ -402,6 +421,11 @@ export function App() {
               {controlModeError && (
                 <p className="host-note host-note--error" role="alert">
                   Could not change the control mode. Try again.
+                </p>
+              )}
+              {adapterError && (
+                <p className="host-note host-note--error" role="alert">
+                  Could not change the network adapter. Try again.
                 </p>
               )}
               {inputError && (

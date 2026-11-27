@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import {
+  CLIPBOARD_FOCUS_REQUIRED_STATUS,
   CLIPBOARD_REQUEST_HEADER,
   CLIPBOARD_TEXT_PATH,
   MAX_CLIPBOARD_TEXT_BYTES,
 } from '@electremote/protocol';
 
 const TOO_LARGE = 'Text is too large to transfer (1 MiB maximum).';
+const TRANSFER_TIMEOUT_MS = 10_000;
 
 export function Clipboard() {
   const [text, setText] = useState('');
@@ -27,6 +29,11 @@ export function Clipboard() {
     transferRef.current = controller;
     setBusy(true);
     setFeedback(null);
+    let timedOut = false;
+    const timer = window.setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, TRANSFER_TIMEOUT_MS);
     try {
       const headers = { [CLIPBOARD_REQUEST_HEADER]: '1' };
       const response = await fetch(CLIPBOARD_TEXT_PATH, {
@@ -37,7 +44,7 @@ export function Clipboard() {
         credentials: 'same-origin',
         cache: 'no-store',
         redirect: 'error',
-        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(10_000)]),
+        signal: controller.signal,
       });
 
       if (!response.ok) {
@@ -46,7 +53,11 @@ export function Clipboard() {
             ? TOO_LARGE
             : response.status === 403
               ? 'Clipboard sharing is unavailable. Check Electremote on the desktop.'
-              : 'The desktop could not transfer clipboard text.',
+              : response.status === CLIPBOARD_FOCUS_REQUIRED_STATUS
+                ? 'Focus the Electremote window on your Linux desktop, then try again.'
+                : response.status >= 500
+                  ? `Electremote could not ${method === 'GET' ? 'read' : 'write'} the desktop clipboard.`
+                  : `The desktop refused the clipboard transfer (HTTP ${response.status}).`,
         );
       }
 
@@ -61,15 +72,18 @@ export function Clipboard() {
         setFeedback({ text: 'Text received. Select it to copy on your phone.', error: false });
       }
     } catch (error) {
-      if (!controller.signal.aborted) {
+      if (timedOut) {
+        setFeedback({ text: 'Clipboard transfer timed out.', error: true });
+      } else if (!controller.signal.aborted) {
         setFeedback({
           text: error instanceof Error ? error.message : 'Clipboard transfer failed.',
           error: true,
         });
       }
     } finally {
+      window.clearTimeout(timer);
       transferRef.current = null;
-      if (!controller.signal.aborted) {
+      if (timedOut || !controller.signal.aborted) {
         setBusy(false);
       }
     }

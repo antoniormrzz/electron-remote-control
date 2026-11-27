@@ -74,6 +74,7 @@ export function Touchpad({
       return;
     }
 
+    event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
     gestureRef.current = {
       id: event.pointerId,
@@ -169,7 +170,7 @@ export function Touchpad({
       <p>
         {holding
           ? 'Slide to drag. Tap Release left when you are done.'
-          : 'Slide to move, tap to click, or use the side strip to scroll.'}
+          : 'Slide or click and drag to move. Tap or click for left click. Use the side strip to scroll.'}
       </p>
       <div className="touchpad-surfaces">
         <div
@@ -179,6 +180,7 @@ export function Touchpad({
           onPointerUp={finish}
           onPointerCancel={finish}
           onLostPointerCapture={finish}
+          onDragStart={(event) => event.preventDefault()}
         >
           {holding ? 'Drag' : 'Move / tap'}
         </div>
@@ -189,6 +191,7 @@ export function Touchpad({
           onPointerUp={finish}
           onPointerCancel={finish}
           onLostPointerCapture={finish}
+          onDragStart={(event) => event.preventDefault()}
         >
           Scroll
         </div>

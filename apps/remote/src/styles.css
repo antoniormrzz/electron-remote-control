@@ -19,11 +19,21 @@ body,
 
 body {
   min-width: 320px;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
   background-color: #f4f2ea;
   background-image:
     linear-gradient(rgba(23, 24, 20, 0.045) 1px, transparent 1px),
     linear-gradient(90deg, rgba(23, 24, 20, 0.045) 1px, transparent 1px);
   background-size: 24px 24px;
+}
+
+input,
+textarea {
+  user-select: text;
+  -webkit-user-select: text;
+  -webkit-touch-callout: default;
 }
 
 button,
@@ -242,8 +252,6 @@ h1 {
   background: #1d4035;
   font-weight: 700;
   touch-action: none;
-  user-select: none;
-  -webkit-user-select: none;
 }
 
 .touchpad-scroll {

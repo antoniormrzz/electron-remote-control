@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { createServer as createTcpServer } from 'node:net';
+import os from 'node:os';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { after, test } from 'node:test';
@@ -9,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { createServer } from 'vite';
 import WebSocket from 'ws';
 import {
+  CLIPBOARD_FOCUS_REQUIRED_STATUS,
   CLIPBOARD_REQUEST_HEADER,
   CLIPBOARD_TEXT_PATH,
   MAX_CLIPBOARD_TEXT_BYTES,
@@ -35,14 +37,19 @@ async function createHostFixture(
     await Promise.all(hosts.map((host) => host.stop()));
     await rm(directory, { recursive: true, force: true });
   });
-  const mediaController = {
-    getStatus: () => 'permission-required',
-    getControlMode: () => 'keyboard',
-    getKeyboardCapabilities: () => ({ primaryModifier: 'control', textSupport: 'ascii' }),
-  };
   return {
     settingsPath,
-    open() {
+    open(getStatus = () => 'permission-required') {
+      let controlMode = 'keyboard';
+      const mediaController = {
+        getStatus,
+        refreshStatus: getStatus,
+        getControlMode: () => controlMode,
+        setControlMode: (mode) => {
+          controlMode = mode;
+        },
+        getKeyboardCapabilities: () => ({ primaryModifier: 'control', textSupport: 'ascii' }),
+      };
       const host = new HostServer(
         fileURLToPath(new URL('../../remote', import.meta.url)),
         mediaController,
@@ -54,6 +61,62 @@ async function createHostFixture(
     },
   };
 }
+
+test('restores control mode and prefers the saved adapter even if its address changes', async (t) => {
+  const adapter = (address) => [{ address, family: 'IPv4', internal: false }];
+  let adapters = { en0: adapter('192.168.1.10'), en1: adapter('192.168.1.20') };
+  t.mock.method(os, 'networkInterfaces', () => adapters);
+  const { open } = await createHostFixture(t);
+  const first = open();
+  assert.equal((await first.start()).controlMode, 'keyboard');
+  first.selectControlMode('media-keys');
+  first.selectInterface('en1:192.168.1.20');
+  await first.stop();
+
+  adapters = { en0: adapter('192.168.1.10') };
+  const restarted = open();
+  const fallback = await restarted.start();
+  assert.equal(fallback.controlMode, 'media-keys');
+  assert.equal(fallback.selectedInterfaceId, 'en0:192.168.1.10');
+
+  adapters = { ...adapters, en1: adapter('192.168.1.90') };
+  assert.equal(restarted.refreshInterfaces().selectedInterfaceId, 'en1:192.168.1.90');
+});
+
+test('remembers each remote access switch without bypassing device-control permission', async (t) => {
+  const { open } = await createHostFixture(t);
+  let status = 'ready';
+  const getStatus = () => status;
+  const first = open(getStatus);
+  const initial = await first.start();
+  assert.deepEqual(initial.remoteAccess, { pointer: false, keyboard: false, clipboard: false });
+
+  first.setPointerEnabled(true);
+  first.setKeyboardEnabled(true);
+  first.setClipboardEnabled(true);
+  await first.stop();
+
+  status = 'permission-required';
+  const restarted = open(getStatus);
+  const restored = await restarted.start();
+  assert.deepEqual(restored.remoteAccess, { pointer: true, keyboard: true, clipboard: true });
+  assert.equal(restored.pointerEnabled, false);
+  assert.equal(restored.keyboardEnabled, false);
+  assert.equal(restored.clipboardEnabled, true);
+
+  restarted.setKeyboardEnabled(false);
+  status = 'ready';
+  const recovered = restarted.refreshControlStatus();
+  assert.equal(recovered.pointerEnabled, true);
+  assert.equal(recovered.keyboardEnabled, false);
+  await restarted.stop();
+
+  const last = await open(getStatus).start();
+  assert.deepEqual(last.remoteAccess, { pointer: true, keyboard: false, clipboard: true });
+  assert.equal(last.pointerEnabled, true);
+  assert.equal(last.keyboardEnabled, false);
+  assert.equal(last.clipboardEnabled, true);
+});
 
 function loopback(remoteUrl) {
   const url = new URL(remoteUrl);
@@ -207,6 +270,31 @@ test('multiline UTF-8 round-trips at the byte limit without replacing clipboard 
   assert.equal(text, expected);
   text += 'a';
   assert.equal((await request()).status, 413);
+});
+
+test('clipboard requests that need desktop focus do not report success or change the clipboard', async (t) => {
+  let text = 'original';
+  let focused = false;
+  const { host, request, write } = await setup(t, {
+    canAccess: () => focused,
+    readText: async () => {
+      assert.equal(focused, true);
+      return text;
+    },
+    writeText: async (value) => {
+      assert.equal(focused, true);
+      text = value;
+    },
+  });
+  host.setClipboardEnabled(true);
+  assert.equal((await request()).status, CLIPBOARD_FOCUS_REQUIRED_STATUS);
+  assert.equal((await write('remote')).status, CLIPBOARD_FOCUS_REQUIRED_STATUS);
+  assert.equal(text, 'original');
+
+  focused = true;
+  assert.equal(await (await request()).text(), 'original');
+  assert.equal((await write('remote')).status, 204);
+  assert.equal(text, 'remote');
 });
 
 test(

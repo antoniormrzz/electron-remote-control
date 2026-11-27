@@ -1,10 +1,17 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { isHostPort } from '../shared/host';
+import { isControlMode, isHostPort } from '../shared/host';
+import type { ControlMode, RemoteAccess } from '../shared/host';
+import type { NetworkInterfacePreference } from './network-interfaces';
 
 const SESSION_LIFETIME_MS = 365 * 24 * 60 * 60 * 1_000;
 const MAX_PAIRED_DEVICES = 32;
+const DEFAULT_REMOTE_ACCESS: Readonly<RemoteAccess> = {
+  pointer: false,
+  keyboard: false,
+  clipboard: false,
+};
 
 interface PairedSession {
   digest: string;
@@ -14,6 +21,35 @@ interface PairedSession {
 interface HostSettings {
   port: number | null;
   sessions: PairedSession[];
+  controlMode?: ControlMode;
+  preferredAdapter?: NetworkInterfacePreference;
+  remoteAccess?: RemoteAccess;
+}
+
+function isRemoteAccess(value: unknown): value is RemoteAccess {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'pointer' in value &&
+    typeof value.pointer === 'boolean' &&
+    'keyboard' in value &&
+    typeof value.keyboard === 'boolean' &&
+    'clipboard' in value &&
+    typeof value.clipboard === 'boolean'
+  );
+}
+
+function isNetworkInterfacePreference(value: unknown): value is NetworkInterfacePreference {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'id' in value &&
+    typeof value.id === 'string' &&
+    value.id.length > 0 &&
+    'name' in value &&
+    typeof value.name === 'string' &&
+    value.name.length > 0
+  );
 }
 
 function isPairedSession(value: unknown): value is PairedSession {
@@ -55,7 +91,26 @@ function readSettings(filePath: string): HostSettings {
     throw new Error('Invalid Electremote host settings.');
   }
 
-  return { port: value.port, sessions: value.sessions };
+  const result: HostSettings = { port: value.port, sessions: value.sessions };
+  if ('controlMode' in value) {
+    if (!isControlMode(value.controlMode)) {
+      throw new Error('Invalid Electremote control mode setting.');
+    }
+    result.controlMode = value.controlMode;
+  }
+  if ('preferredAdapter' in value) {
+    if (!isNetworkInterfacePreference(value.preferredAdapter)) {
+      throw new Error('Invalid Electremote network adapter setting.');
+    }
+    result.preferredAdapter = value.preferredAdapter;
+  }
+  if ('remoteAccess' in value) {
+    if (!isRemoteAccess(value.remoteAccess)) {
+      throw new Error('Invalid Electremote remote access settings.');
+    }
+    result.remoteAccess = value.remoteAccess;
+  }
+  return result;
 }
 
 function digestToken(token: string): string {
@@ -73,6 +128,30 @@ export class HostSettingsStore {
 
   public setPort(port: number): void {
     this.save({ ...this.settings, port });
+  }
+
+  public get controlMode(): ControlMode {
+    return this.settings.controlMode ?? 'keyboard';
+  }
+
+  public setControlMode(controlMode: ControlMode): void {
+    this.save({ ...this.settings, controlMode });
+  }
+
+  public get preferredAdapter(): NetworkInterfacePreference | undefined {
+    return this.settings.preferredAdapter;
+  }
+
+  public setPreferredAdapter({ id, name }: NetworkInterfacePreference): void {
+    this.save({ ...this.settings, preferredAdapter: { id, name } });
+  }
+
+  public get remoteAccess(): Readonly<RemoteAccess> {
+    return this.settings.remoteAccess ?? DEFAULT_REMOTE_ACCESS;
+  }
+
+  public setRemoteAccess(feature: keyof RemoteAccess, enabled: boolean): void {
+    this.save({ ...this.settings, remoteAccess: { ...this.remoteAccess, [feature]: enabled } });
   }
 
   public acceptsSession(token: string | undefined): boolean {
