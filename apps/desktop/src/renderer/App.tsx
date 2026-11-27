@@ -1,5 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Check, Copy, MonitorUp, RadioTower, RefreshCw, ShieldCheck } from 'lucide-react';
+import {
+  Check,
+  Copy,
+  MonitorUp,
+  RadioTower,
+  RefreshCw,
+  ShieldAlert,
+  ShieldCheck,
+} from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import type { HostSnapshot } from '../shared/host';
 
@@ -50,14 +58,8 @@ export function App() {
           ? 'Local only'
           : 'Online';
 
-  const controlStatus =
-    snapshot.status !== 'online'
-      ? 'Unavailable'
-      : snapshot.controlStatus === 'ready'
-        ? 'Ready'
-        : snapshot.controlStatus === 'permission-required'
-          ? 'Accessibility required'
-          : 'Unavailable';
+  const controlStatus = snapshot.status === 'online' ? snapshot.controlStatus : 'unavailable';
+  const needsPermission = controlStatus === 'permission-required';
 
   async function refreshInterfaces(): Promise<void> {
     if (!window.electremote) {
@@ -93,7 +95,7 @@ export function App() {
   }
 
   return (
-    <main className="desktop-shell">
+    <main className={needsPermission ? 'desktop-shell desktop-shell--permission' : 'desktop-shell'}>
       <header className="app-header">
         <div className="brand-mark" aria-hidden="true">
           ER
@@ -191,6 +193,21 @@ export function App() {
         </section>
       )}
 
+      <div className="permission-status" role="status">
+        {needsPermission && (
+          <div className="permission-notice">
+            <ShieldAlert aria-hidden="true" />
+            <div>
+              <h3>Allow Electremote to control media</h3>
+              <p>
+                In System Settings &gt; Privacy &amp; Security, open Device Control and Data Access
+                or Accessibility, then enable Electremote.
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
       <section className="system-grid" aria-label="Application status">
         <article className="system-item">
           <MonitorUp aria-hidden="true" />
@@ -208,9 +225,15 @@ export function App() {
         </article>
         <article className="system-item">
           <RadioTower aria-hidden="true" />
-          <div>
+          <div role="status">
             <h3>Controls</h3>
-            <p>{controlStatus}</p>
+            <p>
+              {needsPermission
+                ? 'Permission required'
+                : controlStatus === 'ready'
+                  ? 'Ready'
+                  : 'Unavailable'}
+            </p>
           </div>
         </article>
       </section>

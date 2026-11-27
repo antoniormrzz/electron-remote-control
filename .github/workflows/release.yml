@@ -37,19 +37,19 @@ jobs:
         include:
           - runner: macos-15
             artifact: electremote-macos-arm64
-            expected: '\.dmg$'
+            extensions: dmg
           - runner: macos-15-intel
             artifact: electremote-macos-x64
-            expected: '\.dmg$'
+            extensions: dmg
           - runner: windows-latest
             artifact: electremote-windows-x64
-            expected: '\.zip$'
+            extensions: zip
           - runner: ubuntu-24.04
             artifact: electremote-linux-x64
-            expected: '\.(deb|rpm)$'
+            extensions: deb rpm
           - runner: ubuntu-24.04-arm
             artifact: electremote-linux-arm64
-            expected: '\.(deb|rpm)$'
+            extensions: deb rpm
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -82,7 +82,18 @@ jobs:
         run: test -f "apps/desktop/resources/robotjs/node.napi.node"
       - name: Verify release artifacts
         shell: bash
-        run: find apps/desktop/out/make -type f | grep -E '${{ matrix.expected }}'
+        env:
+          REQUIRED_EXTENSIONS: ${{ matrix.extensions }}
+        run: |
+          read -ra extensions <<< "$REQUIRED_EXTENSIONS"
+          for extension in "${extensions[@]}"; do
+            artifact="$(find apps/desktop/out/make -type f -name "*.$extension" -print -quit)"
+            if [[ -z "$artifact" ]]; then
+              printf 'Missing release artifact: .%s\n' "$extension" >&2
+              exit 1
+            fi
+            printf 'Found %s\n' "$artifact"
+          done
       - name: Launch Electremote from the Windows ZIP
         if: runner.os == 'Windows'
         shell: pwsh

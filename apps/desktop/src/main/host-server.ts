@@ -12,6 +12,7 @@ import { listNetworkInterfaces, selectPreferredInterface } from './network-inter
 
 const COOKIE_NAME = 'electremote_session';
 const HEARTBEAT_INTERVAL_MS = 30_000;
+const PERMISSION_RECHECK_INTERVAL_MS = 1_000;
 
 type SnapshotListener = (snapshot: HostSnapshot) => void;
 
@@ -52,6 +53,7 @@ export class HostServer {
   private server: Server | null = null;
   private webSocketServer: WebSocketServer | null = null;
   private heartbeat: ReturnType<typeof setInterval> | null = null;
+  private permissionRecheck: ReturnType<typeof setInterval> | null = null;
   private startPromise: Promise<HostSnapshot> | null = null;
 
   public constructor(
@@ -95,11 +97,15 @@ export class HostServer {
   }
 
   public refreshControlStatus(): HostSnapshot {
-    this.mediaController.refreshStatus();
-    return this.publishOnlineSnapshot();
+    const status = this.mediaController.refreshStatus();
+    return this.snapshot.status === 'online' && this.snapshot.controlStatus !== status
+      ? this.publishOnlineSnapshot()
+      : this.snapshot;
   }
 
   public async stop(): Promise<void> {
+    this.stopPermissionRecheck();
+
     if (this.heartbeat) {
       clearInterval(this.heartbeat);
       this.heartbeat = null;
@@ -200,9 +206,7 @@ export class HostServer {
     this.webSocketServer = webSocketServer;
 
     server.on('upgrade', (request, socket, head) => {
-      const requestUrl = new URL(request.url ?? '/', 'http://localhost');
-
-      if (requestUrl.pathname !== '/ws') {
+      if (request.url?.split('?', 1)[0] !== '/ws') {
         rejectUpgrade(socket, '404 Not Found');
         return;
       }
@@ -226,6 +230,9 @@ export class HostServer {
       this.socketHealth.set(socket, true);
       this.publishOnlineSnapshot();
 
+      socket.on('error', (error) => {
+        console.error('Remote WebSocket failed:', error.message);
+      });
       socket.on('pong', () => this.socketHealth.set(socket, true));
       socket.on('message', (data, isBinary) => {
         if (isBinary) {
@@ -288,6 +295,19 @@ export class HostServer {
       return this.snapshot;
     }
 
+    const controlStatus = this.mediaController.getStatus();
+    if (controlStatus === 'permission-required') {
+      if (!this.permissionRecheck) {
+        this.permissionRecheck = setInterval(
+          () => this.refreshControlStatus(),
+          PERMISSION_RECHECK_INTERVAL_MS,
+        );
+        this.permissionRecheck.unref();
+      }
+    } else {
+      this.stopPermissionRecheck();
+    }
+
     const snapshot: OnlineHostSnapshot = {
       status: 'online',
       interfaces: this.interfaces,
@@ -296,9 +316,16 @@ export class HostServer {
       port: address.port,
       connectionCount: this.socketHealth.size,
       localOnly: this.selectedInterface.localOnly,
-      controlStatus: this.mediaController.getStatus(),
+      controlStatus,
     };
     return this.publish(snapshot);
+  }
+
+  private stopPermissionRecheck(): void {
+    if (this.permissionRecheck) {
+      clearInterval(this.permissionRecheck);
+      this.permissionRecheck = null;
+    }
   }
 
   private publish(snapshot: HostSnapshot): HostSnapshot {

@@ -1,12 +1,11 @@
 import path from 'node:path';
-import { app, BrowserWindow, clipboard, ipcMain } from 'electron';
+import { app, BrowserWindow, clipboard, ipcMain, screen } from 'electron';
 import { HOST_IPC_CHANNELS } from '../shared/host';
 import { HostServer } from './host-server';
 import { MediaController } from './media-controller';
 
 let mainWindow: BrowserWindow | null = null;
 let hostServer: HostServer | null = null;
-let mediaController: MediaController | null = null;
 let quitting = false;
 
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
@@ -75,12 +74,26 @@ function getWindowIconPath(): string | undefined {
 
 function createMainWindow(): void {
   const icon = getWindowIconPath();
+  // Wayland does not provide global cursor or window coordinates.
+  const useGlobalPosition = process.platform !== 'linux';
+  const { workArea } = useGlobalPosition
+    ? screen.getDisplayNearestPoint(screen.getCursorScreenPoint())
+    : screen.getPrimaryDisplay();
+  const width = Math.min(960, workArea.width);
+  const height = Math.min(680, workArea.height);
+  const position = useGlobalPosition
+    ? {
+        x: workArea.x + Math.floor((workArea.width - width) / 2),
+        y: workArea.y + Math.floor((workArea.height - height) / 2),
+      }
+    : {};
 
   mainWindow = new BrowserWindow({
-    width: 960,
-    height: 680,
-    minWidth: 720,
-    minHeight: 560,
+    width,
+    height,
+    ...position,
+    minWidth: Math.min(720, width),
+    minHeight: Math.min(560, height),
     backgroundColor: '#181a17',
     ...(icon ? { icon } : {}),
     show: false,
@@ -96,6 +109,10 @@ function createMainWindow(): void {
   mainWindow.once('ready-to-show', () => {
     mainWindow?.show();
   });
+
+  if (process.platform === 'darwin') {
+    mainWindow.on('focus', () => hostServer?.refreshControlStatus());
+  }
 
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -130,7 +147,7 @@ app.on('second-instance', () => {
 
 if (hasSingleInstanceLock) {
   void app.whenReady().then(() => {
-    mediaController = new MediaController(getPackagedRobotBinaryPath());
+    const mediaController = new MediaController(getPackagedRobotBinaryPath());
     mediaController.initialize();
     hostServer = new HostServer(getRemoteAssetsPath(), mediaController);
     hostServer.subscribe((snapshot) => {
@@ -147,9 +164,6 @@ if (hasSingleInstanceLock) {
     void hostServer.start();
 
     app.on('activate', () => {
-      mediaController?.refreshStatus();
-      hostServer?.refreshControlStatus();
-
       if (BrowserWindow.getAllWindows().length === 0) {
         createMainWindow();
       }

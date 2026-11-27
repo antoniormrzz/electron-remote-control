@@ -2,27 +2,22 @@
 
 An open-source, cross-platform desktop application for controlling media playback from another device on the same local network.
 
-This repository is being rebuilt from scratch. This README currently serves as the implementation specification and project checklist. It will be rewritten for users before release.
+## Download and Connect
 
-## Product Goals
+Download the package for your computer from [GitHub Releases](https://github.com/antoniormrzz/electron-remote-control/releases/latest):
 
-- Start the desktop application.
-- Scan a QR code with a phone or other device.
-- Use the served web interface immediately.
-- Require no account, cloud service, mobile application, or manual network setup.
-- Support Windows, macOS, and Linux.
-- Distribute ready-to-use application packages.
+- **Windows:** Extract the x64 ZIP and open `Electremote.exe` from the extracted folder.
+- **macOS:** Open the DMG for Apple Silicon (`arm64`) or Intel (`x64`), drag Electremote into Applications, then eject the disk image. Open Electremote from Applications and grant permission to control the device if prompted.
+- **Linux:** Install the DEB or RPM for your distribution and architecture.
+
+Open Electremote on your computer. Connect your phone to the same local network and scan the QR code in the desktop window. The controls open in your phone's browser; no account or mobile app is required. See the [distribution guide](docs/DISTRIBUTION.md) for checksums, unsigned build warnings, and pairing help.
 
 ## Controls
-
-Initial controls:
 
 - Play and pause
 - Volume up and down
 - Rewind
 - Fast-forward
-
-Additional controls and features will be defined during development.
 
 ## Architecture
 
@@ -77,7 +72,7 @@ Run the standalone remote interface:
 pnpm dev:remote
 ```
 
-Validate or package the foundation:
+Validate or package the application:
 
 ```sh
 pnpm format:check
@@ -101,65 +96,6 @@ pnpm package
 - Use Electron preload APIs with context isolation enabled.
 - Add comments only where intent or platform behavior is not self-evident.
 - Do not add unused infrastructure, speculative abstractions, or unnecessary dependencies.
-
-## Implementation Checklist
-
-### Foundation
-
-- [x] Initialize the pnpm workspace.
-- [x] Create the Electron desktop application.
-- [x] Create the desktop React interface.
-- [x] Create the remote React interface.
-- [x] Create the shared protocol library.
-- [x] Configure strict TypeScript, formatting, and linting.
-
-### Desktop Host
-
-- [x] Start and stop the Express server with the Electron lifecycle.
-- [x] Select an available local port.
-- [x] Detect the appropriate LAN address.
-- [x] Serve the production remote build.
-- [x] Display the remote URL and QR code.
-- [x] Show server and connection status.
-- [x] Handle macOS Accessibility permission.
-- [x] Keep RobotJS in the Electron main process.
-
-### Communication
-
-- [x] Establish WebSocket connections from remote devices.
-- [x] Define the supported command list.
-- [x] Reject unknown or malformed messages.
-- [x] Track connected devices for the current session.
-- [x] Report command failures to the remote interface.
-- [x] Reconnect automatically after temporary network interruptions.
-
-### Remote Interface
-
-- [x] Build a responsive, touch-friendly control layout.
-- [x] Implement all initial media controls.
-- [ ] Show connection and command status.
-- [x] Prevent accidental duplicate commands where appropriate.
-- [ ] Support current mobile browsers.
-
-### Packaging
-
-- [x] Bundle the remote build with Electron.
-- [x] Bundle and unpack the RobotJS native binary correctly.
-- [x] Produce a portable Windows ZIP.
-- [x] Produce macOS packages.
-- [x] Produce Linux packages.
-- [x] Automate release builds with GitHub Actions.
-- [x] Document signing and notarization requirements.
-- [x] Verify x64 and ARM64 support where available.
-
-### Release Preparation
-
-- [ ] Confirm the final product name and branding.
-- [x] Add application icons.
-- [ ] Add contributor documentation.
-- [ ] Add a security policy.
-- [ ] Document installation and usage.
-- [ ] Replace this implementation README with the release README.
 
 ## License
 

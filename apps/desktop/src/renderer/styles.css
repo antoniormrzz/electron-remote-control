@@ -18,7 +18,6 @@ body,
 }
 
 body {
-  min-width: 720px;
   background-color: #181a17;
   background-image:
     linear-gradient(rgba(244, 242, 234, 0.035) 1px, transparent 1px),
@@ -34,7 +33,7 @@ select {
 .desktop-shell {
   width: min(100%, 1080px);
   margin: 0 auto;
-  padding: 40px 56px;
+  padding: 40px clamp(16px, 6vw, 56px);
 }
 
 .app-header {
@@ -124,7 +123,7 @@ h1 {
 
 .host-panel {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 216px;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 32px;
   padding: 24px 0 0;
 }
@@ -267,4 +266,129 @@ h1 {
   margin-bottom: 0;
   color: #a9aba3;
   font-size: 0.82rem;
+}
+
+.permission-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid #b78943;
+  border-left-width: 4px;
+  border-radius: 4px;
+  background: #332617;
+  color: #fff0d3;
+}
+
+.permission-notice svg {
+  flex: 0 0 auto;
+  color: #ffcc79;
+}
+
+.permission-notice h3 {
+  margin-bottom: 4px;
+  font-size: 0.9rem;
+}
+
+.permission-notice p {
+  margin-bottom: 0;
+  font-size: 0.85rem;
+}
+
+@media (max-height: 680px) {
+  .desktop-shell {
+    padding-block: 16px;
+  }
+
+  .app-header {
+    padding-bottom: 14px;
+  }
+
+  .status-band {
+    padding-block: 12px;
+  }
+
+  .status-band h2 {
+    font-size: 3rem;
+  }
+
+  .host-panel {
+    gap: 16px;
+    padding-top: 12px;
+  }
+
+  .host-details {
+    gap: 12px;
+  }
+
+  .qr-panel {
+    width: 192px;
+    height: 192px;
+  }
+
+  .system-grid {
+    margin-top: 12px;
+  }
+
+  .system-item {
+    min-height: 64px;
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .desktop-shell--permission {
+    padding-block: 8px;
+  }
+
+  .desktop-shell--permission .app-header {
+    padding-bottom: 8px;
+  }
+
+  .desktop-shell--permission .brand-mark {
+    width: 42px;
+    height: 42px;
+  }
+
+  .desktop-shell--permission h1 {
+    font-size: 1.5rem;
+  }
+
+  .desktop-shell--permission .status-band {
+    padding-block: 8px;
+  }
+
+  .desktop-shell--permission .status-band h2 {
+    font-size: 2rem;
+  }
+
+  .desktop-shell--permission .host-panel {
+    padding-top: 8px;
+  }
+
+  .desktop-shell--permission .permission-notice {
+    margin-top: 8px;
+    padding-block: 8px;
+  }
+
+  .desktop-shell--permission .system-grid {
+    margin-top: 8px;
+  }
+
+  .desktop-shell--permission .system-item {
+    min-height: 48px;
+    padding-block: 6px;
+  }
+}
+
+@media (max-width: 560px) {
+  .status-band {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .host-panel,
+  .system-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

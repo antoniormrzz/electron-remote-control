@@ -27,11 +27,11 @@ Generated files are written under `apps/desktop/out/`.
 
 ## Release Tags
 
-The tag and both package versions must match exactly. For example, version `0.1.3` must use tag `v0.1.3`.
+The tag and both package versions must match exactly. For example, version `1.0.0` must use tag `v1.0.0`.
 
 ```sh
-git tag v0.1.3
-git push origin v0.1.3
+git tag v1.0.0
+git push origin v1.0.0
 ```
 
 A matching tag verifies package versions, builds the packages below, and creates a draft GitHub Release after all builds succeed.
@@ -58,6 +58,8 @@ For tagged builds, GitHub Actions creates a draft release only after all build a
 
 Connect the phone and desktop to the same local network, then scan the QR code shown in the running desktop app. If the browser shows **Forbidden**, open the full, current QR link directly in Safari or Chrome instead of a scanner preview. Older links stop working after Electremote restarts, and the browser needs to accept the session cookie to load the controls.
 
+Use Electremote on a trusted local network. The QR link grants control to anyone who has it, and the connection uses local HTTP. Don't forward the app's port to the internet.
+
 ## Unsigned Build Warnings
 
 ### macOS
@@ -68,7 +70,7 @@ If macOS reports **No mountable file systems**, the disk image failed to mount; 
 
 Only continue when the file came from this repository's GitHub Release and its checksum matches. In Finder, Control-click Electremote, choose **Open**, then confirm **Open**. Depending on the macOS version, you can also approve the blocked application under **System Settings > Privacy & Security**.
 
-Electremote also requires Accessibility permission to send media-control keystrokes. macOS prompts for this separately when the app starts.
+Electremote needs permission to send media-control keystrokes. If the desktop app shows **Allow Electremote to control media**, go to **System Settings > Privacy & Security** and enable Electremote under **Device Control and Data Access** or **Accessibility**, depending on your version of macOS. Grant permission to the copy in Applications, not a copy on a mounted disk image.
 
 Frictionless distribution would require a paid Apple Developer Program membership, Developer ID signing, hardened runtime configuration, and notarization. Those are intentionally not configured.
 
@@ -86,13 +88,15 @@ Removing this warning requires a paid code-signing certificate or an eligible cl
 
 The DEB and RPM files are not distributed through a signed package repository. Install them only after verifying their source and checksum.
 
+Linux media controls send keystrokes through X11. They may not work with apps running natively under Wayland.
+
 ## Checksums
 
 Each draft release includes a `SHA256SUMS` file containing the SHA-256 checksums of its installer and package files. Download it alongside the file you intend to install, then verify the file before running it:
 
 ```sh
 # macOS (replace the filename with the one you downloaded)
-shasum -a 256 Electremote-0.1.3-arm64.dmg
+shasum -a 256 Electremote-1.0.0-arm64.dmg
 ```
 
 ```powershell
