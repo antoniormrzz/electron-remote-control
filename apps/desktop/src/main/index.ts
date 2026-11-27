@@ -13,6 +13,7 @@ import {
 import { HOST_IPC_CHANNELS, isControlMode, isHostPort } from '../shared/host';
 import { HostServer } from './host-server';
 import { HostSettingsStore } from './host-settings';
+import { getLoginStartup, setLoginStartup } from './login-startup';
 import { MediaController } from './media-controller';
 
 let mainWindow: BrowserWindow | null = null;
@@ -111,6 +112,13 @@ function registerHostIpc(): void {
       throw new Error('The host is unavailable.');
     }
     return hostServer.resetPairedDevices();
+  });
+  ipcMain.handle(HOST_IPC_CHANNELS.getLoginStartup, () => getLoginStartup(app));
+  ipcMain.handle(HOST_IPC_CHANNELS.setLoginStartup, (_event, enabled: unknown) => {
+    if (typeof enabled !== 'boolean') {
+      throw new Error('Invalid start at login setting.');
+    }
+    return setLoginStartup(app, enabled);
   });
 }
 

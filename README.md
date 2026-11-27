@@ -12,9 +12,11 @@ Download the package for your computer from [GitHub Releases](https://github.com
 
 Open Electremote on your computer. Connect your phone to the same local network and scan the QR code in the desktop window. The controls open in your phone's browser; no account or mobile app is required. See the [distribution guide](docs/DISTRIBUTION.md) for checksums, unsigned build warnings, and pairing help.
 
-After pairing, bookmark the address in your phone's browser. Electremote saves the port and remembers paired browsers across restarts. If the computer's IP address changes, scan the new QR code. Use **Connection settings** on the desktop to change the port or disconnect all paired browsers.
+After pairing, bookmark the address in your phone's browser. Electremote saves the port and remembers paired browsers across restarts. If the computer's IP address changes, scan the new QR code. Use **Settings** on the desktop to change the port or disconnect all paired browsers.
 
 ## Keep Electremote Running
+
+Open **Settings** in the top-right of the desktop window and turn on **Start at login** to open Electremote automatically when you sign in. On Linux, this requires a desktop environment that supports XDG Autostart. If your TV computer already signs in automatically, Electremote will open when the desktop session starts. It does not run before login.
 
 - **macOS:** Closing the window keeps the remote active. Click the Dock icon to reopen the window, or choose **Quit** from the Dock menu to stop the remote.
 - **Windows:** Closing the window keeps the remote active in the system tray. Find Electremote in the notification area, including under hidden icons, and choose **Show Electremote** or **Quit Electremote**.

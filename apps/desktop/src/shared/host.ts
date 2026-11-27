@@ -43,6 +43,8 @@ export interface ErrorHostSnapshot {
 
 export type HostSnapshot = StartingHostSnapshot | OnlineHostSnapshot | ErrorHostSnapshot;
 
+export type LoginStartupStatus = 'enabled' | 'disabled' | 'requires-approval' | 'unavailable';
+
 export interface ElectremoteApi {
   getHostSnapshot(): Promise<HostSnapshot>;
   onHostSnapshot(callback: (snapshot: HostSnapshot) => void): () => void;
@@ -56,6 +58,8 @@ export interface ElectremoteApi {
   resetPairedDevices(): Promise<HostSnapshot>;
   copyHostUrl(): Promise<boolean>;
   copyPairingUrl(): Promise<boolean>;
+  getLoginStartup(): Promise<LoginStartupStatus>;
+  setLoginStartup(enabled: boolean): Promise<LoginStartupStatus>;
 }
 
 export const HOST_IPC_CHANNELS = {
@@ -70,5 +74,7 @@ export const HOST_IPC_CHANNELS = {
   changePort: 'host:change-port',
   resetPairedDevices: 'host:reset-paired-devices',
   copyPairingUrl: 'host:copy-pairing-url',
+  getLoginStartup: 'host:get-login-startup',
+  setLoginStartup: 'host:set-login-startup',
   snapshotChanged: 'host:snapshot-changed',
 } as const;

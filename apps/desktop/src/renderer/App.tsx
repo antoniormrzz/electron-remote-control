@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Check,
   Clipboard,
@@ -9,12 +9,15 @@ import {
   Mouse,
   RadioTower,
   RefreshCw,
+  Settings,
   ShieldAlert,
   ShieldCheck,
+  X,
 } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { isControlMode, isHostPort } from '../shared/host';
 import type { HostSnapshot } from '../shared/host';
+import { LoginStartupSetting } from './LoginStartupSetting';
 
 const INITIAL_SNAPSHOT: HostSnapshot = { status: 'starting' };
 const BROWSER_SNAPSHOT: HostSnapshot = {
@@ -30,6 +33,7 @@ export function App() {
   const [copied, setCopied] = useState<'address' | 'pairing' | null>(null);
   const [copyError, setCopyError] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const settingsDialog = useRef<HTMLDialogElement>(null);
   const [portDraft, setPortDraft] = useState<string | null>(null);
   const [settingsFeedback, setSettingsFeedback] = useState<{
     message: string;
@@ -75,6 +79,13 @@ export function App() {
   const controlStatus = snapshot.status === 'online' ? snapshot.controlStatus : 'unavailable';
   const needsPermission = controlStatus === 'permission-required';
   const currentPort = snapshot.status === 'starting' ? undefined : snapshot.port;
+
+  function openSettings(): void {
+    setPortDraft(null);
+    setSettingsFeedback(null);
+    setShowSettings(true);
+    settingsDialog.current?.showModal();
+  }
 
   async function refreshInterfaces(): Promise<void> {
     if (!window.electremote) {
@@ -134,7 +145,7 @@ export function App() {
       setSnapshot(next);
       if (next.status === 'online') {
         setPortDraft(null);
-        setShowSettings(false);
+        setSettingsFeedback({ message: `Host is running on port ${next.port}.`, error: false });
       }
     } catch (error) {
       console.error('Unable to change the host port.', error);
@@ -218,6 +229,17 @@ export function App() {
           <p className="eyebrow">Electremote</p>
           <h1>Desktop host</h1>
         </div>
+        {window.electremote && (
+          <button
+            className="settings-launcher"
+            type="button"
+            aria-haspopup="dialog"
+            onClick={openSettings}
+          >
+            <Settings size={17} aria-hidden="true" />
+            Settings
+          </button>
+        )}
       </header>
 
       <section className="status-band" aria-labelledby="host-status-heading">
@@ -409,45 +431,93 @@ export function App() {
         <section className="error-panel" role="alert">
           <p className="section-label">Startup error</p>
           <p>{snapshot.message}</p>
+          {currentPort !== undefined && (
+            <button className="settings-button" type="button" onClick={openSettings}>
+              Change port
+            </button>
+          )}
         </section>
       )}
 
-      {currentPort !== undefined && (showSettings || snapshot.status === 'error') && (
-        <section className="connection-settings" aria-label="Connection settings">
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              void changePort(portDraft === null ? currentPort : Number(portDraft));
-            }}
+      <dialog
+        ref={settingsDialog}
+        className="settings-dialog"
+        aria-labelledby="settings-title"
+        onClose={() => setShowSettings(false)}
+      >
+        <header className="settings-header">
+          <div>
+            <p className="eyebrow">Electremote</p>
+            <h2 id="settings-title">Settings</h2>
+          </div>
+          <button
+            className="icon-button"
+            type="button"
+            aria-label="Close settings"
+            onClick={() => settingsDialog.current?.close()}
           >
-            <label htmlFor="host-port">Host port</label>
-            <div className="connection-settings-actions">
-              <input
-                id="host-port"
-                type="number"
-                min={1024}
-                max={65535}
-                step={1}
-                required
-                value={portDraft ?? currentPort}
-                disabled={busy}
-                onChange={(event) => setPortDraft(event.target.value)}
-              />
-              <button className="input-toggle" type="submit" disabled={busy}>
-                Save and restart host
-              </button>
-              {snapshot.status === 'online' && (
-                <button
-                  className="input-toggle"
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void resetPairedDevices()}
-                >
-                  Reset paired devices
+            <X aria-hidden="true" />
+          </button>
+        </header>
+        <div className="settings-body">
+          <section aria-labelledby="startup-heading" className="settings-section">
+            <h3 id="startup-heading">Startup</h3>
+            {showSettings && <LoginStartupSetting />}
+          </section>
+
+          <section aria-labelledby="connection-heading" className="settings-section">
+            <h3 id="connection-heading">Connection</h3>
+            {snapshot.status === 'error' && (
+              <p className="host-note host-note--error" role="alert">
+                {snapshot.message}
+              </p>
+            )}
+            {currentPort === undefined && snapshot.status === 'starting' && (
+              <p role="status">Starting the host…</p>
+            )}
+            {currentPort !== undefined && (
+              <form
+                className="settings-port-form"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void changePort(portDraft === null ? currentPort : Number(portDraft));
+                }}
+              >
+                <div>
+                  <label htmlFor="host-port">Host port</label>
+                  <input
+                    id="host-port"
+                    type="number"
+                    min={1024}
+                    max={65535}
+                    step={1}
+                    required
+                    value={portDraft ?? currentPort}
+                    disabled={busy}
+                    onChange={(event) => setPortDraft(event.target.value)}
+                  />
+                </div>
+                <button className="settings-button" type="submit" disabled={busy}>
+                  Save and restart host
                 </button>
-              )}
+              </form>
+            )}
+          </section>
+
+          <section aria-labelledby="pairing-heading" className="settings-section">
+            <h3 id="pairing-heading">Pairing</h3>
+            <div className="settings-row">
+              <p>Disconnect all paired browsers and require a new QR scan.</p>
+              <button
+                className="settings-button settings-button--danger"
+                type="button"
+                disabled={busy || snapshot.status !== 'online'}
+                onClick={() => void resetPairedDevices()}
+              >
+                Reset paired devices
+              </button>
             </div>
-          </form>
+          </section>
           {settingsFeedback && (
             <p
               className={`host-note${settingsFeedback.error ? ' host-note--error' : ''}`}
@@ -456,8 +526,8 @@ export function App() {
               {settingsFeedback.message}
             </p>
           )}
-        </section>
-      )}
+        </div>
+      </dialog>
 
       <div className="permission-status" role="status">
         {needsPermission && (
@@ -479,22 +549,7 @@ export function App() {
           <MonitorUp aria-hidden="true" />
           <div>
             <h3>Desktop</h3>
-            {snapshot.status === 'online' ? (
-              <button
-                className="connection-settings-toggle"
-                type="button"
-                aria-expanded={showSettings}
-                onClick={() => {
-                  setPortDraft(null);
-                  setSettingsFeedback(null);
-                  setShowSettings(!showSettings);
-                }}
-              >
-                Connection settings
-              </button>
-            ) : (
-              <p>Renderer active</p>
-            )}
+            <p>Renderer active</p>
           </div>
         </article>
         <article className="system-item">

@@ -58,7 +58,9 @@ For tagged builds, GitHub Actions creates a draft release only after all build a
 
 Connect the phone and desktop to the same local network, then scan the current QR code shown in the desktop app. It pairs one new browser and redirects to the bookmarkable address. If pairing fails in a scanner preview, open the current pairing link directly in Safari or Chrome. The browser needs to accept the pairing cookie.
 
-Electremote saves its port and paired browsers across restarts. If the port is occupied, the desktop reports the conflict instead of choosing another port. Use **Connection settings** to change it or reset all pairings. Pairings expire after one year or if you clear the browser's site data. A change to the computer's IP address still requires a new bookmark and QR scan.
+Electremote saves its port and paired browsers across restarts. If the port is occupied, the desktop reports the conflict instead of choosing another port. Use **Settings** to change it or reset all pairings. Pairings expire after one year or if you clear the browser's site data. A change to the computer's IP address still requires a new bookmark and QR scan.
+
+To start Electremote at desktop login, enable **Start at login** in Settings in a packaged build. If the OS asks for approval, allow the login item in your system settings. On Windows, the startup entry points to the extracted app: if you move it or replace it with a new copy in a different folder, enable the option from that copy.
 
 Use Electremote on a trusted local network. Anyone with an unused pairing link can pair, and the connection uses local HTTP. Don't forward the app's port to the internet.
 

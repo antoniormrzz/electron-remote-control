@@ -22,6 +22,8 @@ const api: ElectremoteApi = {
   copyPairingUrl: () => ipcRenderer.invoke(HOST_IPC_CHANNELS.copyPairingUrl),
   changePort: (port) => ipcRenderer.invoke(HOST_IPC_CHANNELS.changePort, port),
   resetPairedDevices: () => ipcRenderer.invoke(HOST_IPC_CHANNELS.resetPairedDevices),
+  getLoginStartup: () => ipcRenderer.invoke(HOST_IPC_CHANNELS.getLoginStartup),
+  setLoginStartup: (enabled) => ipcRenderer.invoke(HOST_IPC_CHANNELS.setLoginStartup, enabled),
 };
 
 contextBridge.exposeInMainWorld('electremote', api);
