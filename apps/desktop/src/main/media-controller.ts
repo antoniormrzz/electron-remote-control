@@ -1,5 +1,13 @@
 import { createRequire } from 'node:module';
-import type { ControlCommand, ControlError, PointerRequest } from '@electremote/protocol';
+import { isKeyboardTextSupported } from '@electremote/protocol';
+import type {
+  ControlCommand,
+  ControlError,
+  KeyboardAction,
+  KeyboardError,
+  KeyboardStatus,
+  PointerRequest,
+} from '@electremote/protocol';
 import type { ControlMode } from '../shared/host';
 
 export type ControlStatus = 'ready' | 'permission-required' | 'unavailable';
@@ -9,6 +17,10 @@ export type ControlExecutionResult = { ok: true } | { ok: false; error: ControlE
 type RobotJs = typeof import('robotjs');
 
 const require = createRequire(__filename);
+const KEYBOARD_CAPABILITIES: Pick<KeyboardStatus, 'primaryModifier' | 'textSupport'> = {
+  primaryModifier: process.platform === 'darwin' ? 'command' : 'control',
+  textSupport: process.platform === 'linux' ? 'ascii' : 'bmp',
+};
 
 const COMMAND_KEYS: Record<ControlMode, Record<ControlCommand, string>> = {
   keyboard: {
@@ -148,6 +160,40 @@ export class MediaController {
       console.error('RobotJS failed to change the held mouse button.', error);
       this.status = 'unavailable';
       return false;
+    }
+  }
+
+  public getKeyboardCapabilities(): typeof KEYBOARD_CAPABILITIES {
+    return KEYBOARD_CAPABILITIES;
+  }
+
+  public executeKeyboard(action: KeyboardAction): KeyboardError | null {
+    if (!this.robot) {
+      return 'execution-failed';
+    }
+    if (this.refreshStatus() !== 'ready') {
+      return 'permission-required';
+    }
+
+    try {
+      if (action.type === 'keyboard-text') {
+        if (!isKeyboardTextSupported(action.text, KEYBOARD_CAPABILITIES.textSupport)) {
+          return 'unsupported-text';
+        }
+        this.robot.typeStringDelayed(action.text, 12_000);
+      } else {
+        const modifiers = [...action.modifiers];
+        const key = action.key ?? modifiers.pop();
+        if (!key) {
+          throw new Error('Missing shortcut key.');
+        }
+        this.robot.keyTap(key, modifiers);
+      }
+      return null;
+    } catch (error) {
+      console.error('RobotJS failed to send phone keyboard input.', error);
+      this.status = 'unavailable';
+      return 'execution-failed';
     }
   }
 

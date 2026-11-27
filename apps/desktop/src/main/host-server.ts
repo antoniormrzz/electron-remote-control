@@ -2,8 +2,15 @@ import { randomBytes } from 'node:crypto';
 import fs from 'node:fs';
 import type { Server } from 'node:http';
 import path from 'node:path';
-import { isControlRequest, isPointerRequest } from '@electremote/protocol';
-import type { ControlResult, PointerRequest, PointerStatus } from '@electremote/protocol';
+import { isControlRequest, isKeyboardRequest, isPointerRequest } from '@electremote/protocol';
+import type {
+  ControlResult,
+  KeyboardRequest,
+  KeyboardResult,
+  KeyboardStatus,
+  PointerRequest,
+  PointerStatus,
+} from '@electremote/protocol';
 import express from 'express';
 import { WebSocket, WebSocketServer } from 'ws';
 import type { ControlMode, HostSnapshot, OnlineHostSnapshot } from '../shared/host';
@@ -12,9 +19,10 @@ import { listNetworkInterfaces, selectPreferredInterface } from './network-inter
 
 const COOKIE_NAME = 'electremote_session';
 const HEARTBEAT_INTERVAL_MS = 30_000;
-const PERMISSION_RECHECK_INTERVAL_MS = 1_000;
+const PERMISSION_RECHECK_INTERVAL_MS = 5_000;
 const MAX_POINTER_MESSAGES_PER_SECOND = 60;
 const POINTER_HOLD_TIMEOUT_MS = 3_000;
+const KEYBOARD_COOLDOWN_MS = 100;
 
 type SnapshotListener = (snapshot: HostSnapshot) => void;
 
@@ -58,6 +66,8 @@ export class HostServer {
   private permissionRecheck: ReturnType<typeof setInterval> | null = null;
   private startPromise: Promise<HostSnapshot> | null = null;
   private pointerEnabled = false;
+  private keyboardEnabled = false;
+  private nextKeyboardRequestAt = 0;
   private pointerHold: { socket: WebSocket; timeout: ReturnType<typeof setTimeout> } | null = null;
 
   public constructor(
@@ -115,6 +125,16 @@ export class HostServer {
     return this.publishOnlineSnapshot();
   }
 
+  public setKeyboardEnabled(enabled: boolean): HostSnapshot {
+    if (enabled && (!this.server?.listening || this.mediaController.refreshStatus() !== 'ready')) {
+      this.publishOnlineSnapshot();
+      throw new Error('Device control must be ready before enabling the phone keyboard.');
+    }
+
+    this.keyboardEnabled = enabled;
+    return this.publishOnlineSnapshot();
+  }
+
   public refreshControlStatus(): HostSnapshot {
     const status = this.mediaController.refreshStatus();
     return this.snapshot.status === 'online' && this.snapshot.controlStatus !== status
@@ -124,6 +144,8 @@ export class HostServer {
 
   public async stop(): Promise<void> {
     this.pointerEnabled = false;
+    this.keyboardEnabled = false;
+    this.nextKeyboardRequestAt = 0;
     this.releasePointerHold(false);
     this.stopPermissionRecheck();
 
@@ -302,6 +324,11 @@ export class HostServer {
           return;
         }
 
+        if (isKeyboardRequest(value)) {
+          socket.send(JSON.stringify(this.executeKeyboard(value)));
+          return;
+        }
+
         if (!isControlRequest(value)) {
           socket.close(1008, 'Invalid control message.');
           return;
@@ -328,6 +355,7 @@ export class HostServer {
       });
       this.publishOnlineSnapshot();
       this.sendPointerStatus(socket);
+      this.sendKeyboardStatus(socket);
     });
 
     this.heartbeat = setInterval(() => {
@@ -342,6 +370,23 @@ export class HostServer {
       }
     }, HEARTBEAT_INTERVAL_MS);
     this.heartbeat.unref();
+  }
+
+  private executeKeyboard(request: KeyboardRequest): KeyboardResult {
+    const result = { type: 'keyboard-result', id: request.id } as const;
+    if (!this.keyboardEnabled) {
+      return { ...result, ok: false, error: 'disabled' };
+    }
+    if (this.pointerHold || performance.now() < this.nextKeyboardRequestAt) {
+      return { ...result, ok: false, error: 'busy' };
+    }
+
+    const error = this.mediaController.executeKeyboard(request);
+    this.nextKeyboardRequestAt = performance.now() + KEYBOARD_COOLDOWN_MS;
+    if (error === 'permission-required' || error === 'execution-failed') {
+      this.publishOnlineSnapshot();
+    }
+    return error ? { ...result, ok: false, error } : { ...result, ok: true };
   }
 
   private executePointer(socket: WebSocket, request: PointerRequest): void {
@@ -408,10 +453,14 @@ export class HostServer {
     let controlStatus = this.mediaController.getStatus();
     if (controlStatus !== 'ready') {
       this.pointerEnabled = false;
+      this.keyboardEnabled = false;
     }
     if (!this.pointerEnabled && this.pointerHold) {
       this.releasePointerHold(false);
       controlStatus = this.mediaController.getStatus();
+      if (controlStatus !== 'ready') {
+        this.keyboardEnabled = false;
+      }
     }
     if (controlStatus === 'permission-required') {
       if (!this.permissionRecheck) {
@@ -436,6 +485,7 @@ export class HostServer {
       controlMode: this.mediaController.getControlMode(),
       controlStatus,
       pointerEnabled: this.pointerEnabled,
+      keyboardEnabled: this.keyboardEnabled,
     };
     if (
       this.snapshot.status === 'online' &&
@@ -443,6 +493,14 @@ export class HostServer {
     ) {
       for (const socket of this.socketHealth.keys()) {
         this.sendPointerStatus(socket);
+      }
+    }
+    if (
+      this.snapshot.status === 'online' &&
+      this.snapshot.keyboardEnabled !== snapshot.keyboardEnabled
+    ) {
+      for (const socket of this.socketHealth.keys()) {
+        this.sendKeyboardStatus(socket);
       }
     }
     return this.publish(snapshot);
@@ -463,6 +521,17 @@ export class HostServer {
     if (this.permissionRecheck) {
       clearInterval(this.permissionRecheck);
       this.permissionRecheck = null;
+    }
+  }
+
+  private sendKeyboardStatus(socket: WebSocket): void {
+    if (socket.readyState === WebSocket.OPEN) {
+      const status: KeyboardStatus = {
+        type: 'keyboard-status',
+        enabled: this.keyboardEnabled,
+        ...this.mediaController.getKeyboardCapabilities(),
+      };
+      socket.send(JSON.stringify(status));
     }
   }
 

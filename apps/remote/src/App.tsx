@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { CONTROL_COMMANDS } from '@electremote/protocol';
 import type { ControlCommand } from '@electremote/protocol';
+import { Keyboard } from './Keyboard';
 import { Touchpad } from './Touchpad';
 import { useHostConnection } from './useHostConnection';
 
@@ -34,13 +35,18 @@ export function App() {
     pendingCommands,
     pointerEnabled,
     pointerHolding,
+    keyboard,
     sendControl,
     sendPointer,
+    sendKeyboard,
   } = useHostConnection();
-  const [showTouchpad, setShowTouchpad] = useState(false);
+  const [view, setView] = useState<'media' | 'touchpad' | 'keyboard'>('media');
   const connected = connectionState === 'connected';
   const touchpadAvailable = connected && pointerEnabled;
-  const touchpadVisible = touchpadAvailable && showTouchpad;
+  const activeKeyboard = connected && keyboard?.enabled ? keyboard : null;
+  const touchpadVisible = touchpadAvailable && view === 'touchpad';
+  const keyboardVisible = view === 'keyboard' ? activeKeyboard : null;
+  const switchable = touchpadAvailable || activeKeyboard;
   const ConnectionIcon = connected
     ? Wifi
     : connectionState === 'unavailable'
@@ -71,18 +77,30 @@ export function App() {
         </div>
       </header>
 
-      <div className={touchpadAvailable ? 'remote-views remote-views--switchable' : 'remote-views'}>
-        {touchpadAvailable && (
-          <button
-            className="view-button view-switch"
-            type="button"
-            onClick={() => setShowTouchpad(!touchpadVisible)}
-          >
-            {touchpadVisible ? 'Back to media controls' : 'Open touchpad'}
-          </button>
+      <div className={switchable ? 'remote-views remote-views--switchable' : 'remote-views'}>
+        {switchable && (
+          <nav className="view-switch" aria-label="Remote views">
+            {(touchpadVisible || keyboardVisible) && (
+              <button className="view-button" type="button" onClick={() => setView('media')}>
+                Back to media controls
+              </button>
+            )}
+            {touchpadAvailable && !touchpadVisible && (
+              <button className="view-button" type="button" onClick={() => setView('touchpad')}>
+                Open touchpad
+              </button>
+            )}
+            {activeKeyboard && !keyboardVisible && (
+              <button className="view-button" type="button" onClick={() => setView('keyboard')}>
+                Open keyboard
+              </button>
+            )}
+          </nav>
         )}
         {touchpadVisible ? (
           <Touchpad holding={pointerHolding} sendPointer={sendPointer} />
+        ) : keyboardVisible ? (
+          <Keyboard status={keyboardVisible} sendKeyboard={sendKeyboard} />
         ) : (
           <section className="control-pad" aria-label="Media controls">
             {CONTROL_COMMANDS.map((command) => {

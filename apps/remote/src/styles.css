@@ -119,8 +119,94 @@ h1 {
 }
 
 .view-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   align-self: start;
   margin-top: 16px;
+}
+
+.phone-keyboard,
+.keyboard-text {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+
+.phone-keyboard {
+  padding-top: 16px;
+}
+
+.phone-keyboard p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.keyboard-text label,
+.keyboard-composer summary {
+  font-weight: 700;
+}
+
+.keyboard-text textarea,
+.keyboard-composer select {
+  width: 100%;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid #171814;
+  border-radius: 4px;
+  color: #171814;
+  background: #fffef9;
+  font: inherit;
+}
+
+.keyboard-text textarea {
+  resize: vertical;
+}
+
+.keyboard-keys,
+.keyboard-modifiers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.keyboard-keys .view-button {
+  padding-inline: 9px;
+}
+
+.keyboard-composer {
+  padding: 10px;
+  border: 1px solid #b8b5aa;
+  border-radius: 4px;
+}
+
+.keyboard-composer fieldset {
+  min-width: 0;
+  margin: 8px 0;
+  border: 0;
+  padding: 0;
+}
+
+.keyboard-modifiers label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 36px;
+}
+
+.keyboard-composer select {
+  display: block;
+  min-height: 44px;
+  margin: 4px 0 8px;
+}
+
+.phone-keyboard .view-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.keyboard-feedback[data-error='true'] {
+  color: #8c2e22;
 }
 
 .touchpad {

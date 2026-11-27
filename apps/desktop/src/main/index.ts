@@ -67,6 +67,13 @@ function registerHostIpc(): void {
 
     return hostServer.setPointerEnabled(enabled);
   });
+  ipcMain.handle(HOST_IPC_CHANNELS.setKeyboardEnabled, (_event, enabled: unknown) => {
+    if (typeof enabled !== 'boolean' || !hostServer) {
+      throw new Error('Invalid phone keyboard setting.');
+    }
+
+    return hostServer.setKeyboardEnabled(enabled);
+  });
   ipcMain.handle(HOST_IPC_CHANNELS.copyUrl, () => {
     const snapshot = hostServer?.getSnapshot();
     if (snapshot?.status !== 'online') {

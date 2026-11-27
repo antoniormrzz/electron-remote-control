@@ -1,17 +1,44 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { isControlResult, isPointerStatus } from '@electremote/protocol';
-import type { ControlCommand, ControlRequest, PointerRequest } from '@electremote/protocol';
+import {
+  isControlResult,
+  isKeyboardResult,
+  isKeyboardStatus,
+  isPointerStatus,
+} from '@electremote/protocol';
+import type {
+  ControlCommand,
+  ControlRequest,
+  KeyboardAction,
+  KeyboardRequest,
+  KeyboardResult,
+  KeyboardStatus,
+  PointerRequest,
+} from '@electremote/protocol';
 
 export type HostConnectionState = 'connecting' | 'connected' | 'reconnecting' | 'unavailable';
 
 const RECONNECT_DELAY_MS = 2_000;
 const UNAVAILABLE_AFTER_ATTEMPTS = 3;
 const ACKNOWLEDGEMENT_TIMEOUT_MS = 3_000;
-const MAX_POINTER_BUFFER_BYTES = 1_024;
+const MAX_INPUT_BUFFER_BYTES = 1_024;
 
 interface PendingRequest {
   command: ControlCommand;
   timeout: number;
+}
+
+interface PendingKeyboardRequest {
+  id: string;
+  timeout: number;
+  resolve(result: KeyboardResult): void;
+  reject(error: Error): void;
+}
+
+function cancelKeyboardRequest(request: PendingKeyboardRequest | null): void {
+  if (request) {
+    window.clearTimeout(request.timeout);
+    request.reject(new Error('Connection lost. The last keyboard action may have been sent.'));
+  }
 }
 
 export interface HostConnection {
@@ -19,8 +46,10 @@ export interface HostConnection {
   pendingCommands: ReadonlySet<ControlCommand>;
   pointerEnabled: boolean;
   pointerHolding: boolean;
+  keyboard: KeyboardStatus | null;
   sendControl(command: ControlCommand): void;
   sendPointer(request: PointerRequest): void;
+  sendKeyboard(action: KeyboardAction): Promise<KeyboardResult>;
 }
 
 function getWebSocketUrl(): string {
@@ -37,6 +66,9 @@ export function useHostConnection(): HostConnection {
   const socketRef = useRef<WebSocket | null>(null);
   const [pointerEnabled, setPointerEnabled] = useState(false);
   const [pointerHolding, setPointerHolding] = useState(false);
+  const [keyboard, setKeyboard] = useState<KeyboardStatus | null>(null);
+  const keyboardEnabledRef = useRef(false);
+  const pendingKeyboardRef = useRef<PendingKeyboardRequest | null>(null);
   const pointerEnabledRef = useRef(false);
   const pendingRequestsRef = useRef(new Map<string, PendingRequest>());
   const requestSequenceRef = useRef(0);
@@ -77,6 +109,10 @@ export function useHostConnection(): HostConnection {
         pointerEnabledRef.current = false;
         setPointerEnabled(false);
         setPointerHolding(false);
+        keyboardEnabledRef.current = false;
+        setKeyboard(null);
+        cancelKeyboardRequest(pendingKeyboardRef.current);
+        pendingKeyboardRef.current = null;
 
         attempts += 1;
         setState(attempts >= UNAVAILABLE_AFTER_ATTEMPTS ? 'unavailable' : 'reconnecting');
@@ -99,6 +135,22 @@ export function useHostConnection(): HostConnection {
           pointerEnabledRef.current = value.enabled;
           setPointerEnabled(value.enabled);
           setPointerHolding(value.holding);
+          return;
+        }
+
+        if (isKeyboardStatus(value)) {
+          keyboardEnabledRef.current = value.enabled;
+          setKeyboard(value);
+          return;
+        }
+
+        if (isKeyboardResult(value)) {
+          const pending = pendingKeyboardRef.current;
+          if (pending?.id === value.id) {
+            window.clearTimeout(pending.timeout);
+            pendingKeyboardRef.current = null;
+            pending.resolve(value);
+          }
           return;
         }
 
@@ -137,6 +189,9 @@ export function useHostConnection(): HostConnection {
       }
       pendingRequests.clear();
       pointerEnabledRef.current = false;
+      keyboardEnabledRef.current = false;
+      cancelKeyboardRequest(pendingKeyboardRef.current);
+      pendingKeyboardRef.current = null;
       socket?.close();
       socketRef.current = null;
     };
@@ -186,12 +241,45 @@ export function useHostConnection(): HostConnection {
     }
 
     const isRelease = request.type === 'pointer-hold' && request.action === 'release';
-    if (!isRelease && socket.bufferedAmount > MAX_POINTER_BUFFER_BYTES) {
+    if (!isRelease && socket.bufferedAmount > MAX_INPUT_BUFFER_BYTES) {
       return;
     }
 
     socket.send(JSON.stringify(request));
   }, []);
 
-  return { state, pendingCommands, pointerEnabled, pointerHolding, sendControl, sendPointer };
+  function sendKeyboard(action: KeyboardAction): Promise<KeyboardResult> {
+    const socket = socketRef.current;
+    if (!keyboardEnabledRef.current || !socket || socket.readyState !== WebSocket.OPEN) {
+      return Promise.reject(new Error('The phone keyboard is unavailable.'));
+    }
+    if (pendingKeyboardRef.current) {
+      return Promise.reject(new Error('Wait for the current keyboard action to finish.'));
+    }
+    if (socket.bufferedAmount > MAX_INPUT_BUFFER_BYTES) {
+      return Promise.reject(new Error('The connection is busy. Try again.'));
+    }
+
+    const id = `keyboard-${++requestSequenceRef.current}`;
+    const request: KeyboardRequest = { ...action, id };
+    return new Promise((resolve, reject) => {
+      socket.send(JSON.stringify(request));
+      const timeout = window.setTimeout(() => {
+        pendingKeyboardRef.current = null;
+        reject(new Error('No response from the desktop. Check before sending again.'));
+      }, ACKNOWLEDGEMENT_TIMEOUT_MS);
+      pendingKeyboardRef.current = { id, timeout, resolve, reject };
+    });
+  }
+
+  return {
+    state,
+    pendingCommands,
+    pointerEnabled,
+    pointerHolding,
+    keyboard,
+    sendControl,
+    sendPointer,
+    sendKeyboard,
+  };
 }

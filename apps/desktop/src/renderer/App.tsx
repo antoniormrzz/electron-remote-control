@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   Check,
   Copy,
+  Keyboard,
   MonitorUp,
   Mouse,
   RadioTower,
@@ -26,7 +27,7 @@ export function App() {
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [controlModeError, setControlModeError] = useState(false);
-  const [pointerError, setPointerError] = useState(false);
+  const [inputError, setInputError] = useState<'touchpad' | 'keyboard' | null>(null);
 
   useEffect(() => {
     const api = window.electremote;
@@ -115,18 +116,22 @@ export function App() {
     }
   }
 
-  async function setPointerEnabled(enabled: boolean): Promise<void> {
+  async function setInputEnabled(input: 'touchpad' | 'keyboard', enabled: boolean): Promise<void> {
     setBusy(true);
-    setPointerError(false);
+    setInputError(null);
     try {
       if (!window.electremote) {
         throw new Error('Desktop controls are unavailable.');
       }
 
-      setSnapshot(await window.electremote.setPointerEnabled(enabled));
+      setSnapshot(
+        await (input === 'touchpad'
+          ? window.electremote.setPointerEnabled(enabled)
+          : window.electremote.setKeyboardEnabled(enabled)),
+      );
     } catch (error) {
-      console.error('Unable to change the phone touchpad setting.', error);
-      setPointerError(true);
+      console.error(`Unable to change the phone ${input} setting.`, error);
+      setInputError(input);
     } finally {
       setBusy(false);
     }
@@ -152,16 +157,34 @@ export function App() {
         <div className="host-actions">
           {snapshot.status === 'online' && (
             <button
-              className="pointer-toggle"
+              className="input-toggle"
               type="button"
               aria-pressed={snapshot.pointerEnabled}
               title="Allow paired devices to move, click, and scroll your mouse"
               disabled={busy || (controlStatus !== 'ready' && !snapshot.pointerEnabled)}
-              onClick={() => void setPointerEnabled(!snapshot.pointerEnabled)}
+              onClick={() => void setInputEnabled('touchpad', !snapshot.pointerEnabled)}
             >
               <Mouse size={16} aria-hidden="true" />
-              Phone touchpad
-              <span aria-hidden="true">: {snapshot.pointerEnabled ? 'On' : 'Off'}</span>
+              <span>
+                Phone touchpad
+                <span aria-hidden="true">: {snapshot.pointerEnabled ? 'On' : 'Off'}</span>
+              </span>
+            </button>
+          )}
+          {snapshot.status === 'online' && (
+            <button
+              className="input-toggle"
+              type="button"
+              aria-pressed={snapshot.keyboardEnabled}
+              title="Allow paired devices to type and send shortcuts to your computer"
+              disabled={busy || (controlStatus !== 'ready' && !snapshot.keyboardEnabled)}
+              onClick={() => void setInputEnabled('keyboard', !snapshot.keyboardEnabled)}
+            >
+              <Keyboard size={16} aria-hidden="true" />
+              <span>
+                Phone keyboard
+                <span aria-hidden="true">: {snapshot.keyboardEnabled ? 'On' : 'Off'}</span>
+              </span>
             </button>
           )}
           <span className={`status-indicator status-indicator--${snapshot.status}`}>
@@ -255,9 +278,9 @@ export function App() {
                   Could not change the control mode. Try again.
                 </p>
               )}
-              {pointerError && (
+              {inputError && (
                 <p className="host-note host-note--error" role="alert">
-                  Could not change the phone touchpad setting. Try again.
+                  Could not change the phone {inputError} setting. Try again.
                 </p>
               )}
             </div>

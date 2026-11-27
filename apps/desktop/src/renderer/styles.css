@@ -100,7 +100,7 @@ h1 {
   gap: 8px;
 }
 
-.pointer-toggle {
+.input-toggle {
   display: inline-flex;
   min-height: 38px;
   align-items: center;
@@ -114,17 +114,17 @@ h1 {
   font-weight: 700;
 }
 
-.pointer-toggle[aria-pressed='true'] {
+.input-toggle[aria-pressed='true'] {
   border-color: #b78943;
   color: #fff0d3;
   background: #332617;
 }
 
-.pointer-toggle:disabled {
+.input-toggle:disabled {
   opacity: 0.6;
 }
 
-.pointer-toggle:not(:disabled) {
+.input-toggle:not(:disabled) {
   cursor: pointer;
 }
 
@@ -352,7 +352,7 @@ h1 {
 
 @media (max-height: 680px) {
   .desktop-shell {
-    padding-block: 16px;
+    padding-block: 12px;
   }
 
   .app-header {
@@ -360,7 +360,17 @@ h1 {
   }
 
   .status-band {
+    gap: 12px;
     padding-block: 12px;
+  }
+
+  .host-actions {
+    gap: 6px;
+  }
+
+  .input-toggle,
+  .status-indicator {
+    padding-inline: 8px;
   }
 
   .status-band h2 {

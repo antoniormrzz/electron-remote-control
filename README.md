@@ -31,6 +31,10 @@ To use your phone as a mouse, turn on **Phone touchpad** in the desktop app, the
 
 Use **Right click** and **Middle click** for those buttons. Tap **Hold left**, slide on the pad to drag, then tap **Release left**. The hold also releases when you leave the touchpad, disconnect, or turn it off on the desktop.
 
+For typing, turn on **Phone keyboard** separately in the desktop app and choose **Open keyboard** on your phone. Focus the destination on your computer, type with the phone's native keyboard, then tap **Send text**. Use **Enter**, navigation and editing buttons, or **Compose shortcut** for combinations like Command+Space, Alt+F4, Shift+Delete, or Shift+Alt. Copy, Paste and Select all use Command on macOS and Ctrl on Windows and Linux.
+
+Text goes to the focused app without using the desktop clipboard. Send up to 120 characters at once: use printable ASCII on Linux/X11; on macOS and Windows, text is limited to basic Unicode (no line breaks or supplementary characters like most emoji). This access starts off and applies to all currently paired devices while enabled. Keep the link private and turn the keyboard off when you're done.
+
 ## Architecture
 
 - **Electron** provides the desktop application and platform integration.
