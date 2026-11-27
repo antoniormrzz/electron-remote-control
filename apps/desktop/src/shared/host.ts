@@ -27,6 +27,7 @@ export interface OnlineHostSnapshot {
   controlStatus: 'ready' | 'permission-required' | 'unavailable';
   pointerEnabled: boolean;
   keyboardEnabled: boolean;
+  clipboardEnabled: boolean;
 }
 
 export interface ErrorHostSnapshot {
@@ -44,6 +45,7 @@ export interface ElectremoteApi {
   selectControlMode(mode: ControlMode): Promise<HostSnapshot>;
   setPointerEnabled(enabled: boolean): Promise<HostSnapshot>;
   setKeyboardEnabled(enabled: boolean): Promise<HostSnapshot>;
+  setClipboardEnabled(enabled: boolean): Promise<HostSnapshot>;
   copyHostUrl(): Promise<boolean>;
 }
 
@@ -55,5 +57,6 @@ export const HOST_IPC_CHANNELS = {
   selectControlMode: 'host:select-control-mode',
   setPointerEnabled: 'host:set-pointer-enabled',
   setKeyboardEnabled: 'host:set-keyboard-enabled',
+  setClipboardEnabled: 'host:set-clipboard-enabled',
   snapshotChanged: 'host:snapshot-changed',
 } as const;

@@ -1,4 +1,12 @@
 export {
+  CLIPBOARD_REQUEST_HEADER,
+  CLIPBOARD_TEXT_PATH,
+  MAX_CLIPBOARD_TEXT_BYTES,
+  isClipboardStatus,
+} from './clipboard';
+export type { ClipboardStatus } from './clipboard';
+
+export {
   CONTROL_COMMANDS,
   KEYBOARD_FUNCTION_KEYS,
   KEYBOARD_MODIFIERS,

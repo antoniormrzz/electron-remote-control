@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   Check,
+  Clipboard,
   Copy,
   Keyboard,
   MonitorUp,
@@ -27,7 +28,7 @@ export function App() {
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [controlModeError, setControlModeError] = useState(false);
-  const [inputError, setInputError] = useState<'touchpad' | 'keyboard' | null>(null);
+  const [inputError, setInputError] = useState<'touchpad' | 'keyboard' | 'clipboard' | null>(null);
 
   useEffect(() => {
     const api = window.electremote;
@@ -116,7 +117,10 @@ export function App() {
     }
   }
 
-  async function setInputEnabled(input: 'touchpad' | 'keyboard', enabled: boolean): Promise<void> {
+  async function setInputEnabled(
+    input: 'touchpad' | 'keyboard' | 'clipboard',
+    enabled: boolean,
+  ): Promise<void> {
     setBusy(true);
     setInputError(null);
     try {
@@ -124,13 +128,15 @@ export function App() {
         throw new Error('Desktop controls are unavailable.');
       }
 
-      setSnapshot(
-        await (input === 'touchpad'
-          ? window.electremote.setPointerEnabled(enabled)
-          : window.electremote.setKeyboardEnabled(enabled)),
-      );
+      const { setPointerEnabled, setKeyboardEnabled, setClipboardEnabled } = window.electremote;
+      const update = {
+        touchpad: setPointerEnabled,
+        keyboard: setKeyboardEnabled,
+        clipboard: setClipboardEnabled,
+      };
+      setSnapshot(await update[input](enabled));
     } catch (error) {
-      console.error(`Unable to change the phone ${input} setting.`, error);
+      console.error(`Unable to change the ${input} setting.`, error);
       setInputError(input);
     } finally {
       setBusy(false);
@@ -184,6 +190,22 @@ export function App() {
               <span>
                 Phone keyboard
                 <span aria-hidden="true">: {snapshot.keyboardEnabled ? 'On' : 'Off'}</span>
+              </span>
+            </button>
+          )}
+          {snapshot.status === 'online' && (
+            <button
+              className="input-toggle"
+              type="button"
+              aria-pressed={snapshot.clipboardEnabled}
+              title="Allow paired devices to read and replace your desktop's text clipboard"
+              disabled={busy}
+              onClick={() => void setInputEnabled('clipboard', !snapshot.clipboardEnabled)}
+            >
+              <Clipboard size={16} aria-hidden="true" />
+              <span>
+                Clipboard sharing
+                <span aria-hidden="true">: {snapshot.clipboardEnabled ? 'On' : 'Off'}</span>
               </span>
             </button>
           )}
@@ -280,7 +302,7 @@ export function App() {
               )}
               {inputError && (
                 <p className="host-note host-note--error" role="alert">
-                  Could not change the phone {inputError} setting. Try again.
+                  Could not change the {inputError} setting. Try again.
                 </p>
               )}
             </div>

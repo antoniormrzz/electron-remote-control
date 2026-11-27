@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  isClipboardStatus,
   isControlResult,
   isKeyboardResult,
   isKeyboardStatus,
@@ -47,6 +48,7 @@ export interface HostConnection {
   pointerEnabled: boolean;
   pointerHolding: boolean;
   keyboard: KeyboardStatus | null;
+  clipboardEnabled: boolean;
   sendControl(command: ControlCommand): void;
   sendPointer(request: PointerRequest): void;
   sendKeyboard(action: KeyboardAction): Promise<KeyboardResult>;
@@ -67,6 +69,7 @@ export function useHostConnection(): HostConnection {
   const [pointerEnabled, setPointerEnabled] = useState(false);
   const [pointerHolding, setPointerHolding] = useState(false);
   const [keyboard, setKeyboard] = useState<KeyboardStatus | null>(null);
+  const [clipboardEnabled, setClipboardEnabled] = useState(false);
   const keyboardEnabledRef = useRef(false);
   const pendingKeyboardRef = useRef<PendingKeyboardRequest | null>(null);
   const pointerEnabledRef = useRef(false);
@@ -111,6 +114,7 @@ export function useHostConnection(): HostConnection {
         setPointerHolding(false);
         keyboardEnabledRef.current = false;
         setKeyboard(null);
+        setClipboardEnabled(false);
         cancelKeyboardRequest(pendingKeyboardRef.current);
         pendingKeyboardRef.current = null;
 
@@ -135,6 +139,11 @@ export function useHostConnection(): HostConnection {
           pointerEnabledRef.current = value.enabled;
           setPointerEnabled(value.enabled);
           setPointerHolding(value.holding);
+          return;
+        }
+
+        if (isClipboardStatus(value)) {
+          setClipboardEnabled(value.enabled);
           return;
         }
 
@@ -278,6 +287,7 @@ export function useHostConnection(): HostConnection {
     pointerEnabled,
     pointerHolding,
     keyboard,
+    clipboardEnabled,
     sendControl,
     sendPointer,
     sendKeyboard,

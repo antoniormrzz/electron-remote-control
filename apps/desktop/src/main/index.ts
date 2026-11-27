@@ -74,13 +74,20 @@ function registerHostIpc(): void {
 
     return hostServer.setKeyboardEnabled(enabled);
   });
-  ipcMain.handle(HOST_IPC_CHANNELS.copyUrl, () => {
+  ipcMain.handle(HOST_IPC_CHANNELS.setClipboardEnabled, (_event, enabled: unknown) => {
+    if (typeof enabled !== 'boolean' || !hostServer) {
+      throw new Error('Invalid clipboard sharing setting.');
+    }
+
+    return hostServer.setClipboardEnabled(enabled);
+  });
+  ipcMain.handle(HOST_IPC_CHANNELS.copyUrl, async () => {
     const snapshot = hostServer?.getSnapshot();
     if (snapshot?.status !== 'online') {
       return false;
     }
 
-    clipboard.writeText(snapshot.url);
+    await clipboard.writeText(snapshot.url);
     return true;
   });
 }
@@ -222,7 +229,7 @@ if (hasSingleInstanceLock) {
   void app.whenReady().then(() => {
     const mediaController = new MediaController(getPackagedRobotBinaryPath());
     mediaController.initialize();
-    hostServer = new HostServer(getRemoteAssetsPath(), mediaController);
+    hostServer = new HostServer(getRemoteAssetsPath(), mediaController, clipboard);
     hostServer.subscribe((snapshot) => {
       broadcastHostSnapshot();
       if (snapshot.status === 'error') {

@@ -4,6 +4,7 @@ import type { Server } from 'node:http';
 import path from 'node:path';
 import { isControlRequest, isKeyboardRequest, isPointerRequest } from '@electremote/protocol';
 import type {
+  ClipboardStatus,
   ControlResult,
   KeyboardRequest,
   KeyboardResult,
@@ -14,7 +15,9 @@ import type {
 import express from 'express';
 import { WebSocket, WebSocketServer } from 'ws';
 import type { ControlMode, HostSnapshot, OnlineHostSnapshot } from '../shared/host';
-import { MediaController } from './media-controller';
+import { createClipboardRouter } from './clipboard-router';
+import type { TextClipboard } from './clipboard-router';
+import type { MediaController } from './media-controller';
 import { listNetworkInterfaces, selectPreferredInterface } from './network-interfaces';
 
 const COOKIE_NAME = 'electremote_session';
@@ -67,12 +70,15 @@ export class HostServer {
   private startPromise: Promise<HostSnapshot> | null = null;
   private pointerEnabled = false;
   private keyboardEnabled = false;
+  private clipboardEnabled = false;
+  private clipboardAccessVersion = 0;
   private nextKeyboardRequestAt = 0;
   private pointerHold: { socket: WebSocket; timeout: ReturnType<typeof setTimeout> } | null = null;
 
   public constructor(
     private readonly remoteAssetsPath: string,
     private readonly mediaController: MediaController,
+    private readonly clipboard: TextClipboard,
   ) {}
 
   public getSnapshot(): HostSnapshot {
@@ -135,6 +141,16 @@ export class HostServer {
     return this.publishOnlineSnapshot();
   }
 
+  public setClipboardEnabled(enabled: boolean): HostSnapshot {
+    if (enabled && !this.server?.listening) {
+      throw new Error('Start the host before enabling clipboard sharing.');
+    }
+
+    this.clipboardEnabled = enabled;
+    this.clipboardAccessVersion++;
+    return this.publishOnlineSnapshot();
+  }
+
   public refreshControlStatus(): HostSnapshot {
     const status = this.mediaController.refreshStatus();
     return this.snapshot.status === 'online' && this.snapshot.controlStatus !== status
@@ -145,6 +161,7 @@ export class HostServer {
   public async stop(): Promise<void> {
     this.pointerEnabled = false;
     this.keyboardEnabled = false;
+    this.clipboardEnabled = false;
     this.nextKeyboardRequestAt = 0;
     this.releasePointerHold(false);
     this.stopPermissionRecheck();
@@ -210,6 +227,11 @@ export class HostServer {
       }
       next();
     });
+    app.use(
+      createClipboardRouter(this.clipboard, () =>
+        this.clipboardEnabled ? this.clipboardAccessVersion : null,
+      ),
+    );
     app.get('/favicon.ico', (_request, response) => response.sendStatus(204));
     app.use(express.static(this.remoteAssetsPath, { fallthrough: false }));
 
@@ -356,6 +378,7 @@ export class HostServer {
       this.publishOnlineSnapshot();
       this.sendPointerStatus(socket);
       this.sendKeyboardStatus(socket);
+      this.sendClipboardStatus(socket);
     });
 
     this.heartbeat = setInterval(() => {
@@ -486,6 +509,7 @@ export class HostServer {
       controlStatus,
       pointerEnabled: this.pointerEnabled,
       keyboardEnabled: this.keyboardEnabled,
+      clipboardEnabled: this.clipboardEnabled,
     };
     if (
       this.snapshot.status === 'online' &&
@@ -501,6 +525,14 @@ export class HostServer {
     ) {
       for (const socket of this.socketHealth.keys()) {
         this.sendKeyboardStatus(socket);
+      }
+    }
+    if (
+      this.snapshot.status === 'online' &&
+      this.snapshot.clipboardEnabled !== snapshot.clipboardEnabled
+    ) {
+      for (const socket of this.socketHealth.keys()) {
+        this.sendClipboardStatus(socket);
       }
     }
     return this.publish(snapshot);
@@ -531,6 +563,13 @@ export class HostServer {
         enabled: this.keyboardEnabled,
         ...this.mediaController.getKeyboardCapabilities(),
       };
+      socket.send(JSON.stringify(status));
+    }
+  }
+
+  private sendClipboardStatus(socket: WebSocket): void {
+    if (socket.readyState === WebSocket.OPEN) {
+      const status: ClipboardStatus = { type: 'clipboard-status', enabled: this.clipboardEnabled };
       socket.send(JSON.stringify(status));
     }
   }

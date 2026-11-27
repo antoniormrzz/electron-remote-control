@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { CONTROL_COMMANDS } from '@electremote/protocol';
 import type { ControlCommand } from '@electremote/protocol';
+import { Clipboard } from './Clipboard';
 import { Keyboard } from './Keyboard';
 import { Touchpad } from './Touchpad';
 import { useHostConnection } from './useHostConnection';
@@ -36,17 +37,20 @@ export function App() {
     pointerEnabled,
     pointerHolding,
     keyboard,
+    clipboardEnabled,
     sendControl,
     sendPointer,
     sendKeyboard,
   } = useHostConnection();
-  const [view, setView] = useState<'media' | 'touchpad' | 'keyboard'>('media');
+  const [view, setView] = useState<'media' | 'touchpad' | 'keyboard' | 'clipboard'>('media');
   const connected = connectionState === 'connected';
   const touchpadAvailable = connected && pointerEnabled;
   const activeKeyboard = connected && keyboard?.enabled ? keyboard : null;
   const touchpadVisible = touchpadAvailable && view === 'touchpad';
   const keyboardVisible = view === 'keyboard' ? activeKeyboard : null;
-  const switchable = touchpadAvailable || activeKeyboard;
+  const clipboardAvailable = connected && clipboardEnabled;
+  const clipboardVisible = clipboardAvailable && view === 'clipboard';
+  const switchable = touchpadAvailable || activeKeyboard || clipboardAvailable;
   const ConnectionIcon = connected
     ? Wifi
     : connectionState === 'unavailable'
@@ -80,7 +84,7 @@ export function App() {
       <div className={switchable ? 'remote-views remote-views--switchable' : 'remote-views'}>
         {switchable && (
           <nav className="view-switch" aria-label="Remote views">
-            {(touchpadVisible || keyboardVisible) && (
+            {(touchpadVisible || keyboardVisible || clipboardVisible) && (
               <button className="view-button" type="button" onClick={() => setView('media')}>
                 Back to media controls
               </button>
@@ -95,12 +99,19 @@ export function App() {
                 Open keyboard
               </button>
             )}
+            {clipboardAvailable && !clipboardVisible && (
+              <button className="view-button" type="button" onClick={() => setView('clipboard')}>
+                Open clipboard
+              </button>
+            )}
           </nav>
         )}
         {touchpadVisible ? (
           <Touchpad holding={pointerHolding} sendPointer={sendPointer} />
         ) : keyboardVisible ? (
           <Keyboard status={keyboardVisible} sendKeyboard={sendKeyboard} />
+        ) : clipboardVisible ? (
+          <Clipboard />
         ) : (
           <section className="control-pad" aria-label="Media controls">
             {CONTROL_COMMANDS.map((command) => {

@@ -16,6 +16,8 @@ const api: ElectremoteApi = {
   setPointerEnabled: (enabled) => ipcRenderer.invoke(HOST_IPC_CHANNELS.setPointerEnabled, enabled),
   setKeyboardEnabled: (enabled) =>
     ipcRenderer.invoke(HOST_IPC_CHANNELS.setKeyboardEnabled, enabled),
+  setClipboardEnabled: (enabled) =>
+    ipcRenderer.invoke(HOST_IPC_CHANNELS.setClipboardEnabled, enabled),
   copyHostUrl: () => ipcRenderer.invoke(HOST_IPC_CHANNELS.copyUrl),
 };
 

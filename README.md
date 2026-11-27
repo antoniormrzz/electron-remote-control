@@ -35,6 +35,8 @@ For typing, turn on **Phone keyboard** separately in the desktop app and choose 
 
 Text goes to the focused app without using the desktop clipboard. Send up to 120 characters at once: use printable ASCII on Linux/X11; on macOS and Windows, text is limited to basic Unicode (no line breaks or supplementary characters like most emoji). This access starts off and applies to all currently paired devices while enabled. Keep the link private and turn the keyboard off when you're done.
 
+For longer text, turn on **Clipboard sharing** in the desktop app and choose **Open clipboard** on your phone. **Get desktop clipboard** puts the desktop's plain text in the box for you to copy. To go the other way, paste into the box and choose **Set desktop clipboard**, then paste normally on the computer. Transfers support up to 1 MiB of UTF-8 text, including line breaks, Markdown, and emoji. This starts off each time Electremote opens and lets any paired device read or replace the desktop's text clipboard while enabled. Nothing is synced automatically or kept in a history. Use it only on a trusted network.
+
 ## Architecture
 
 - **Electron** provides the desktop application and platform integration.
@@ -94,6 +96,7 @@ Validate or package the application:
 pnpm format:check
 pnpm lint
 pnpm typecheck
+pnpm test
 pnpm build
 pnpm package
 ```

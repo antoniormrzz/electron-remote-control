@@ -420,7 +420,16 @@ h1 {
   }
 
   .desktop-shell--permission .status-band {
-    padding-block: 8px;
+    padding-block: 4px;
+  }
+
+  .desktop-shell--permission .host-actions {
+    gap: 4px;
+  }
+
+  .desktop-shell--permission .input-toggle,
+  .desktop-shell--permission .status-indicator {
+    min-height: 28px;
   }
 
   .desktop-shell--permission .status-band h2 {
