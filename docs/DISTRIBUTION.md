@@ -2,6 +2,10 @@
 
 Electremote release artifacts are built from version tags using native GitHub-hosted runners. They are not signed with a distribution certificate.
 
+## Product Website
+
+The [product website](../website/) is separate from the pnpm workspace and app build. To publish an update, drop only the `website/` folder into **Production deploys** in the existing Electremote Netlify project. No install or build step is needed.
+
 ## Local Builds
 
 Use the Node.js version pinned in [`.nvmrc`](../.nvmrc). With nvm, run `nvm install` and `nvm use` from the repository root.

@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Electremote — Wi-Fi Phone Remote for Windows, Mac &amp; Linux</title>
+    <meta
+      name="description"
+      content="Use your iPhone or Android as a Wi-Fi remote for Windows, Mac, or Linux. Control media, use a touchpad, type, and share text. Free, with no phone app."
+    />
+    <meta name="theme-color" content="#111410" />
+    <link rel="canonical" href="https://electremote.netlify.app/" />
+    <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Electremote" />
+    <meta property="og:url" content="https://electremote.netlify.app/" />
+    <meta property="og:title" content="Electremote — Your phone. Your computer’s remote." />
+    <meta
+      property="og:description"
+      content="Control media, move the mouse, type, and share text from your phone’s browser. Free and open source for Windows, macOS, and Linux."
+    />
+    <meta
+      property="og:image"
+      content="https://electremote.netlify.app/assets/electremote-social.jpg"
+    />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="Electremote desktop host and phone remote on a dark grid"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "name": "Electremote",
+            "url": "https://electremote.netlify.app/"
+          },
+          {
+            "@type": "SoftwareApplication",
+            "name": "Electremote",
+            "url": "https://electremote.netlify.app/",
+            "applicationCategory": "UtilitiesApplication",
+            "operatingSystem": "Windows, macOS, Linux",
+            "description": "A free, open-source app that turns your phone browser into a media remote, touchpad, keyboard, and text clipboard for your computer.",
+            "downloadUrl": "https://github.com/antoniormrzz/electron-remote-control/releases/latest",
+            "sameAs": "https://github.com/antoniormrzz/electron-remote-control",
+            "screenshot": [
+              "https://electremote.netlify.app/assets/desktop.webp",
+              "https://electremote.netlify.app/assets/media.webp"
+            ],
+            "offers": { "@type": "Offer", "price": 0, "priceCurrency": "USD" }
+          }
+        ]
+      }
+    </script>
+  </head>
+  <body id="top">
+    <svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <symbol id="icon-arrow" viewBox="0 0 24 24">
+        <path d="M4 12h15m-6-6 6 6-6 6" />
+      </symbol>
+      <symbol id="icon-out" viewBox="0 0 24 24">
+        <path d="M6 18 18 6M8 6h10v10" />
+      </symbol>
+      <symbol id="icon-download" viewBox="0 0 24 24">
+        <path d="M12 3v12m-5-5 5 5 5-5M4 16v4h16v-4" />
+      </symbol>
+      <symbol id="icon-github" viewBox="0 0 24 24">
+        <path
+          fill="currentColor"
+          stroke="none"
+          d="M12 .75a11.25 11.25 0 0 0-3.56 21.92c.56.1.77-.24.77-.54l-.02-2.1c-3.13.68-3.8-1.33-3.8-1.33-.51-1.3-1.25-1.65-1.25-1.65-1.03-.7.08-.69.08-.69 1.14.08 1.74 1.17 1.74 1.17 1.01 1.74 2.65 1.24 3.3.95.1-.73.39-1.24.71-1.52-2.5-.29-5.13-1.25-5.13-5.57 0-1.23.44-2.23 1.16-3.02-.12-.29-.5-1.43.11-2.98 0 0 .95-.3 3.09 1.16a10.7 10.7 0 0 1 5.62 0c2.14-1.46 3.08-1.16 3.08-1.16.61 1.55.23 2.69.11 2.98.72.79 1.16 1.79 1.16 3.02 0 4.33-2.63 5.28-5.14 5.56.41.35.77 1.03.77 2.08l-.01 3.1c0 .3.2.65.78.54A11.25 11.25 0 0 0 12 .75Z"
+        />
+      </symbol>
+      <symbol id="icon-media" viewBox="0 0 24 24">
+        <path d="m5 4 11 8-11 8V4Zm15 1v14" />
+      </symbol>
+      <symbol id="icon-touchpad" viewBox="0 0 24 24">
+        <rect x="3" y="3" width="18" height="18" rx="3" />
+        <path d="M3 15h18m-9 0v6" />
+      </symbol>
+      <symbol id="icon-keyboard" viewBox="0 0 24 24">
+        <rect x="2" y="5" width="20" height="14" rx="2" />
+        <path
+          d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M6 12h.01M10 12h.01M14 12h.01M18 12h.01M8 15h8"
+        />
+      </symbol>
+      <symbol id="icon-clipboard" viewBox="0 0 24 24">
+        <path d="M8 5H5v16h14V5h-3M8 14h8m-8 3h6" />
+        <rect x="8" y="3" width="8" height="5" rx="1" />
+      </symbol>
+      <symbol id="icon-monitor" viewBox="0 0 24 24">
+        <rect x="2" y="3" width="20" height="14" rx="2" />
+        <path d="M12 17v4m-5 0h10" />
+      </symbol>
+      <symbol id="icon-headphones" viewBox="0 0 24 24">
+        <path d="M3 14v-2a9 9 0 0 1 18 0v2" />
+        <rect x="3" y="13" width="4" height="7" rx="1.5" />
+        <rect x="17" y="13" width="4" height="7" rx="1.5" />
+      </symbol>
+      <symbol id="icon-laptop" viewBox="0 0 24 24">
+        <path d="M5 16V5h14v11m-14 0-3 3h20l-3-3H5Z" />
+      </symbol>
+      <symbol id="icon-scan" viewBox="0 0 24 24">
+        <path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M7 12h10M8 8h1m6 0h1m-8 8h1m6 0h1" />
+      </symbol>
+      <symbol id="icon-phone" viewBox="0 0 24 24">
+        <rect x="6" y="2" width="12" height="20" rx="3" />
+        <path d="M11 18h2" />
+      </symbol>
+      <symbol id="icon-wifi" viewBox="0 0 24 24">
+        <path
+          d="M2 8a16 16 0 0 1 20 0M5.5 12a10.5 10.5 0 0 1 13 0m-9.5 4a5 5 0 0 1 6 0M12 20h.01"
+        />
+      </symbol>
+      <symbol id="icon-windows" viewBox="0 0 24 24">
+        <path
+          d="m3 5 8-1.2V11H3V5Zm10-1.5L21 2v9h-8V3.5ZM3 13h8v7.2L3 19v-6Zm10 0h8v9l-8-1.5V13Z"
+        />
+      </symbol>
+      <symbol id="icon-mac" viewBox="0 0 24 24">
+        <path
+          d="M9 10V6.5a2.5 2.5 0 1 0-2.5 2.5h11A2.5 2.5 0 1 0 15 6.5v11a2.5 2.5 0 1 0 2.5-2.5h-11A2.5 2.5 0 1 0 9 17.5V10Z"
+        />
+      </symbol>
+      <symbol id="icon-linux" viewBox="0 0 24 24">
+        <rect x="3" y="4" width="18" height="16" rx="2" />
+        <path d="m7 9 3 3-3 3m6 0h4" />
+      </symbol>
+    </svg>
+
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+      <div class="wrap header-inner">
+        <a class="brand" href="#top">
+          <img src="assets/logo.svg" width="42" height="42" alt="" />
+          <span>Electremote<span class="brand-dot">.</span></span>
+        </a>
+        <nav class="site-nav" aria-label="Main navigation">
+          <a class="nav-section" href="#features">Features</a>
+          <a class="nav-section" href="#setups">Use cases</a>
+          <a class="nav-section" href="#setup">Setup</a>
+          <a class="nav-github" href="https://github.com/antoniormrzz/electron-remote-control">
+            <svg class="icon" aria-hidden="true"><use href="#icon-github" /></svg>
+            <span class="sr-only">GitHub repository</span>
+          </a>
+          <a class="button button-outline button-small" href="#download">
+            Download <svg class="icon" aria-hidden="true"><use href="#icon-download" /></svg>
+          </a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="wrap hero-inner">
+          <div class="hero-copy">
+            <p class="kicker hero-kicker">
+              <span class="signal-dot"></span> Free &amp; open source
+            </p>
+            <h1 id="hero-title">
+              Your phone.<br />
+              Your computer’s <em>remote.</em>
+            </h1>
+            <p class="hero-intro">
+              Pause the movie, move the mouse, or type from the couch. Electremote turns your
+              phone’s browser into a remote control for your computer, right over Wi-Fi.
+            </p>
+            <div class="hero-actions">
+              <a class="button button-primary" href="#download">
+                Download Electremote
+                <svg class="icon" aria-hidden="true"><use href="#icon-download" /></svg>
+              </a>
+              <a class="button button-text" href="#setup">
+                See how it works
+                <svg class="icon" aria-hidden="true"><use href="#icon-arrow" /></svg>
+              </a>
+            </div>
+            <p class="platform-line">Windows <span></span> macOS <span></span> Linux</p>
+          </div>
+
+          <figure class="hero-visual">
+            <div class="visual-scan" aria-hidden="true"></div>
+            <div class="visual-coordinates mono" aria-hidden="true">
+              <span>01</span> / THE SETUP
+            </div>
+            <div class="visual-handshake mono" aria-hidden="true">
+              <svg class="icon" aria-hidden="true"><use href="#icon-wifi" /></svg>
+              SAME NETWORK
+            </div>
+            <i class="visual-corner corner-top-right" aria-hidden="true"></i>
+            <i class="visual-corner corner-bottom-left" aria-hidden="true"></i>
+
+            <div class="desktop-frame">
+              <div class="desktop-chrome mono" aria-hidden="true">
+                <span class="window-dots"><i></i><i></i><i></i></span>
+                <span>Electremote / Desktop</span>
+              </div>
+              <img
+                src="assets/desktop.webp"
+                width="1440"
+                height="600"
+                alt="Electremote desktop host showing an online connection, remote settings, and a pairing QR code"
+                fetchpriority="high"
+              />
+            </div>
+
+            <div class="phone-frame hero-phone">
+              <img
+                src="assets/media.webp"
+                width="780"
+                height="1580"
+                alt="Electremote in a phone browser with play, pause, volume, rewind, and fast-forward controls"
+                decoding="async"
+              />
+            </div>
+            <figcaption class="visual-caption mono">
+              <span>01</span> DESKTOP <b>↔</b> <span>02</span> PHONE
+            </figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <div class="connection-strip">
+        <div class="wrap connection-inner">
+          <p>
+            <svg class="icon" aria-hidden="true"><use href="#icon-wifi" /></svg>
+            Works on your local network
+          </p>
+          <p>
+            <svg class="icon" aria-hidden="true"><use href="#icon-phone" /></svg>
+            No phone app or account
+          </p>
+          <p>
+            <svg class="icon" aria-hidden="true"><use href="#icon-scan" /></svg>
+            Pair with a QR scan
+          </p>
+        </div>
+      </div>
+
+      <section class="section wrap" id="features" aria-labelledby="features-title">
+        <div class="section-intro">
+          <p class="kicker"><span>01</span> / The controls</p>
+          <h2 id="features-title">More than a media remote<span>.</span></h2>
+          <p>
+            Start with the media remote. Turn on the touchpad, keyboard, or clipboard in the desktop
+            app whenever you need them. Pick a control below to see it in action.
+          </p>
+        </div>
+
+        <fieldset class="feature-picker">
+          <legend class="sr-only">Choose an Electremote screen to preview</legend>
+          <input
+            class="sr-only feature-radio"
+            type="radio"
+            name="feature"
+            id="feature-media"
+            checked
+          />
+          <input class="sr-only feature-radio" type="radio" name="feature" id="feature-touchpad" />
+          <input class="sr-only feature-radio" type="radio" name="feature" id="feature-keyboard" />
+          <input class="sr-only feature-radio" type="radio" name="feature" id="feature-clipboard" />
+
+          <div class="feature-options">
+            <label class="feature-option" for="feature-media">
+              <span class="feature-icon">
+                <svg class="icon" aria-hidden="true"><use href="#icon-media" /></svg>
+              </span>
+              <span class="feature-copy">
+                <strong>Media remote</strong>
+                <span
+                  >Play, pause, rewind, fast-forward, and adjust volume. Use keyboard shortcuts for
+                  the active player or switch to system media keys.</span
+                >
+              </span>
+              <svg class="icon feature-arrow" aria-hidden="true"><use href="#icon-arrow" /></svg>
+            </label>
+            <label class="feature-option" for="feature-touchpad">
+              <span class="feature-icon">
+                <svg class="icon" aria-hidden="true"><use href="#icon-touchpad" /></svg>
+              </span>
+              <span class="feature-copy">
+                <strong>Phone touchpad</strong>
+                <span
+                  >Slide to move the pointer, tap to click, or scroll with the side strip. You can
+                  drag and right-click, too.</span
+                >
+              </span>
+              <svg class="icon feature-arrow" aria-hidden="true"><use href="#icon-arrow" /></svg>
+            </label>
+            <label class="feature-option" for="feature-keyboard">
+              <span class="feature-icon">
+                <svg class="icon" aria-hidden="true"><use href="#icon-keyboard" /></svg>
+              </span>
+              <span class="feature-copy">
+                <strong>Phone keyboard</strong>
+                <span
+                  >Type a search with your phone’s keyboard, navigate with arrow keys, or send a
+                  shortcut like Command+Space or Alt+F4.</span
+                >
+              </span>
+              <svg class="icon feature-arrow" aria-hidden="true"><use href="#icon-arrow" /></svg>
+            </label>
+            <label class="feature-option" for="feature-clipboard">
+              <span class="feature-icon">
+                <svg class="icon" aria-hidden="true"><use href="#icon-clipboard" /></svg>
+              </span>
+              <span class="feature-copy">
+                <strong>Clipboard sharing</strong>
+                <span
+                  >Send a link, a note, or longer text between your phone and computer. You choose
+                  when to copy or send it.</span
+                >
+              </span>
+              <svg class="icon feature-arrow" aria-hidden="true"><use href="#icon-arrow" /></svg>
+            </label>
+          </div>
+
+          <div class="feature-stage">
+            <p class="stage-label mono"><span class="signal-dot"></span> PHONE INTERFACE</p>
+            <div class="stage-orbit" aria-hidden="true"></div>
+            <div class="phone-frame feature-phone">
+              <img
+                class="feature-shot shot-media"
+                src="assets/media.webp"
+                width="780"
+                height="1580"
+                alt="Remote screen with large playback and volume buttons"
+                loading="lazy"
+                decoding="async"
+              />
+              <img
+                class="feature-shot shot-touchpad"
+                src="assets/touchpad.webp"
+                width="780"
+                height="1580"
+                alt="Phone touchpad with a scroll strip and buttons for mouse clicks and dragging"
+                loading="lazy"
+                decoding="async"
+              />
+              <img
+                class="feature-shot shot-keyboard"
+                src="assets/keyboard.webp"
+                width="780"
+                height="1580"
+                alt="Phone keyboard screen with a text field, navigation keys, and a shortcut composer"
+                loading="lazy"
+                decoding="async"
+              />
+              <img
+                class="feature-shot shot-clipboard"
+                src="assets/clipboard.webp"
+                width="780"
+                height="1580"
+                alt="Phone clipboard screen with a text box and controls to get or set desktop clipboard text"
+                loading="lazy"
+                decoding="async"
+              />
+            </div>
+            <p class="stage-foot mono">Actual app screens</p>
+          </div>
+        </fieldset>
+      </section>
+
+      <section class="use-cases section wrap" id="setups" aria-labelledby="setups-title">
+        <div class="section-intro">
+          <p class="kicker"><span>02</span> / Real-life setups</p>
+          <h2 id="setups-title">Control the computer you’re not sitting at<span>.</span></h2>
+          <p>Give an old PC a second life or keep your work screen free of media controls.</p>
+        </div>
+        <div class="case-grid">
+          <article class="case-card">
+            <div class="case-tag mono">
+              <svg class="icon" aria-hidden="true"><use href="#icon-monitor" /></svg>
+              Old PC + TV
+            </div>
+            <h3>Turn an old PC into a media hub</h3>
+            <p>
+              Hook up a spare computer to the TV, open VLC or a browser, and leave the keyboard off
+              the coffee table. Pause a movie or adjust the volume from your phone.
+            </p>
+          </article>
+          <article class="case-card">
+            <div class="case-tag mono">
+              <svg class="icon" aria-hidden="true"><use href="#icon-headphones" /></svg>
+              Second computer
+            </div>
+            <h3>Play podcasts while you work</h3>
+            <p>
+              Let a second computer handle podcasts or music. Pause an episode before a call or turn
+              the volume down without switching away from your work.
+            </p>
+          </article>
+          <article class="case-card">
+            <div class="case-tag mono">
+              <svg class="icon" aria-hidden="true"><use href="#icon-laptop" /></svg>
+              Laptop + HDMI
+            </div>
+            <h3>Stay on the couch at movie night</h3>
+            <p>
+              Plug your laptop into the TV over HDMI. Use your phone as a touchpad to pick the next
+              video or as a keyboard to find it by name.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="setup section" id="setup" aria-labelledby="setup-title">
+        <div class="wrap">
+          <div class="section-intro">
+            <p class="kicker"><span>03</span> / Getting started</p>
+            <h2 id="setup-title">From desktop to couch<span>.</span></h2>
+            <p>
+              Install Electremote on the computer you want to control. Your phone only needs a
+              browser.
+            </p>
+          </div>
+          <ol class="steps">
+            <li>
+              <div class="step-top">
+                <svg class="icon" aria-hidden="true"><use href="#icon-monitor" /></svg>
+                <span class="mono">01</span>
+              </div>
+              <h3>Open the desktop app</h3>
+              <p>Download Electremote for Windows, macOS, or Linux and open it on your computer.</p>
+            </li>
+            <li>
+              <div class="step-top">
+                <svg class="icon" aria-hidden="true"><use href="#icon-scan" /></svg>
+                <span class="mono">02</span>
+              </div>
+              <h3>Scan the QR code</h3>
+              <p>
+                Connect your phone to the same local network and point its camera at the code in the
+                desktop window.
+              </p>
+            </li>
+            <li>
+              <div class="step-top">
+                <svg class="icon" aria-hidden="true"><use href="#icon-phone" /></svg>
+                <span class="mono">03</span>
+              </div>
+              <h3>Take the controls</h3>
+              <p>
+                Open the link in your phone’s browser. Bookmark the remote so it’s ready for next
+                time.
+              </p>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="section wrap" id="features-section" aria-labelledby="download">
+        <div class="download-panel">
+          <div class="section-intro">
+            <p class="kicker"><span>04</span> / Download</p>
+            <h2 id="download" tabindex="-1">Get Electremote<span>.</span></h2>
+            <p>Pick the package for your computer from the latest GitHub release.</p>
+          </div>
+          <div class="download-platforms">
+            <div>
+              <svg class="icon" aria-hidden="true"><use href="#icon-windows" /></svg>
+              <h3>Windows</h3>
+              <p>x64 ZIP. Extract it and open Electremote.exe.</p>
+            </div>
+            <div>
+              <svg class="icon" aria-hidden="true"><use href="#icon-mac" /></svg>
+              <h3>macOS</h3>
+              <p>Apple Silicon or Intel DMG. Drag Electremote into Applications.</p>
+            </div>
+            <div>
+              <svg class="icon" aria-hidden="true"><use href="#icon-linux" /></svg>
+              <h3>Linux</h3>
+              <p>DEB or RPM packages for x64 and ARM64.</p>
+            </div>
+          </div>
+          <div class="download-actions">
+            <a
+              class="button button-primary"
+              href="https://github.com/antoniormrzz/electron-remote-control/releases/latest"
+            >
+              <svg class="icon" aria-hidden="true"><use href="#icon-github" /></svg>
+              Download on GitHub
+              <svg class="icon" aria-hidden="true"><use href="#icon-out" /></svg>
+            </a>
+            <p>Free to use. MIT licensed.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="faq section wrap" aria-labelledby="faq-title">
+        <div class="section-intro">
+          <p class="kicker"><span>05</span> / Good to know</p>
+          <h2 id="faq-title">Quick answers<span>.</span></h2>
+        </div>
+        <div class="faq-list">
+          <details>
+            <summary>Do I need an app on my iPhone or Android phone?</summary>
+            <p>
+              No. Install Electremote on your computer, then open the QR link in your phone’s
+              browser, such as Safari or Chrome.
+            </p>
+          </details>
+          <details>
+            <summary>Does Electremote need an internet connection?</summary>
+            <p>
+              No internet connection is needed once you’ve downloaded the desktop app. The computer
+              and phone just need to be on the same local network. Your computer can use Ethernet or
+              Wi-Fi.
+            </p>
+          </details>
+          <details>
+            <summary>Can I use my phone as a mouse and keyboard for my computer?</summary>
+            <p>
+              Yes. Turn on <strong>Phone touchpad</strong> or <strong>Phone keyboard</strong> in the
+              desktop app, then open that control in your phone’s browser. Use the touchpad to move,
+              click, and scroll, or send text and shortcuts to the active app.
+            </p>
+          </details>
+          <details>
+            <summary>Can I control YouTube, Netflix, or VLC?</summary>
+            <p>
+              Electremote sends keyboard shortcuts or system media keys. Keyboard mode works with
+              the active player if it responds to Space and the arrow keys. In system media key
+              mode, your operating system chooses the player, and rewind and fast-forward act as
+              previous and next track.
+            </p>
+          </details>
+          <details>
+            <summary>Can Electremote start when I sign in?</summary>
+            <p>
+              Yes. Turn on <strong>Start at login</strong> in the desktop app’s Settings. On Linux,
+              your desktop environment needs to support XDG Autostart.
+            </p>
+          </details>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer" id="contact-section">
+      <div class="wrap footer-inner">
+        <div class="footer-copy">
+          <a class="brand" href="#top">
+            <img src="assets/logo.svg" width="42" height="42" alt="" loading="lazy" />
+            <span>Electremote<span class="brand-dot">.</span></span>
+          </a>
+          <p>A little more control from wherever you’re sitting.</p>
+        </div>
+        <nav class="footer-nav" aria-label="Footer navigation">
+          <a href="https://github.com/antoniormrzz/electron-remote-control">
+            <svg class="icon" aria-hidden="true"><use href="#icon-github" /></svg>
+            View source
+          </a>
+          <a href="https://github.com/antoniormrzz/electron-remote-control/issues">GitHub issues</a>
+          <a href="#top">Back to top ↑</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>
